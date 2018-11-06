@@ -3,7 +3,6 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 var cookieParser = require("cookie-parser");
-const exphbs = require("express-handlebars");
 const logger = require("morgan");
 const session = require("express-session");
 const path = require("path");
@@ -22,12 +21,9 @@ app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
 app.use(logger("dev"));
-
-app.use(express.static("public"));
-/*if (process.env.NODE_ENV === "production") {
+if (process.env.NODE_ENV === "production") {
   app.use(express.static("client/build"));
-}*/
-
+}
 app.use(
   session({
     resave: false,
@@ -38,14 +34,6 @@ app.use(
 
 app.use(passport.initialize());
 app.use(passport.session());
-
-app.engine(
-  "handlebars",
-  exphbs({
-    defaultLayout: "main"
-  })
-);
-app.set("view engine", "handlebars");
 
 app.use(routes);
 
@@ -60,9 +48,9 @@ app.use(function (err, req, res) {
   res.render("error");
 });
 
-/*app.get("*", function (req, res) {
+app.get("*", function (req, res) {
   res.sendFile(path.join(__dirname, "./client/build/index.html"));
-});*/
+});
 
 app.listen(PORT, function () {
   console.log(`🌎 ==> Server now on port ${PORT}!`);
