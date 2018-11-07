@@ -7,14 +7,17 @@ export default {
             password
         });
     },
-    register: function (username, password, confirmPassword) {
+    register: function (username, password, passwordConf) {
         return axios.post("/api/users/register", {
             username,
             password,
-            confirmPassword
+            passwordConf
         });
     },
     getUserStatus: function () {
         return axios.get("/api/users/getUserStatus");
+    },
+    logout: function () {
+        return axios.get("/api/users/logout");
     }
 };
