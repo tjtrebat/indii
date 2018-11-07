@@ -11,12 +11,15 @@
     "seed": "node scripts/seedDB.js",
     "install": "cd client && yarn install",
     "build": "cd client && npm run build",
-    "heroku-postbuild": "npm run build"
+    "heroku-postbuild": "npm run build",
+    "lint": "eslint **/*.js --quiet --ignore-pattern client/**",
+    "fix": "eslint --fix . --ignore-pattern client/**"
   },
   "author": "",
   "license": "ISC",
   "devDependencies": {
     "concurrently": "^3.5.0",
+    "eslint": "^5.8.0",
     "nodemon": "^1.11.0"
   },
   "dependencies": {
