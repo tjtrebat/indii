@@ -7,11 +7,10 @@ export default {
             password
         });
     },
-    register: function (username, password, passwordConf) {
+    register: function (username, password) {
         return axios.post("/api/users/register", {
             username,
-            password,
-            passwordConf
+            password
         });
     },
     getUserStatus: function () {

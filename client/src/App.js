@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
+import Profile from "./pages/Profile";
 import Header from "./components/Header";
 import { Nav } from "./components/Nav";
 import API from "./utils/API";
@@ -17,52 +18,33 @@ class App extends Component {
   }
   getUserStatus() {
     API.getUserStatus()
-      .then(({ data }) => {
-        this.setState({
-          user: data
-        });
-      })
-      .catch(err => console.log(err));
+      .then(res => this.setState({
+        user: res.data
+      })).catch(err => console.log(err));
   }
   handleLogin = (username, password) => {
-    username = username.trim();
-    password = password.trim();
     return API.login(username, password)
-      .then(({ data }) => {
-        console.log(data);
-        this.setState({
-          user: data
-        });
-      })
-      .catch(err => {
-        console.log(err);
-        return new Error("Invalid username or password.");
+      .then(res => this.setState({
+        user: res.data
+      })).catch(err => {
+        throw new Error("Login Error", err);
       });
   }
-  handleRegister = (username, password, passwordConf) => {
-    username = username.trim();
-    password = password.trim();
-    passwordConf = passwordConf.trim();
-    return API.register(username, password, passwordConf)
-      .then(({ data }) => {
-        const { error } = data;
-        if (error) {
-          return new Error(error);
-        }
+  handleRegister = (username, password) => {
+    return API.register(username, password)
+      .then(res => {
+        console.log(res.data);
         this.setState({
-          user: data
-        });
-      })
-      .catch(err => console.log(err));
+          user: res.data
+        })
+      }).catch(err => {
+        throw new Error("Registration Error", err);
+      });
   }
   handleLogout = () => {
-    API.logout()
-      .then(() => {
-        this.setState({
-          user: ""
-        });
-      })
-      .catch(err => console.log(err));
+    API.logout().then(() => this.setState({
+      user: ""
+    })).catch(err => console.log(err));
   }
   render() {
     const { user } = this.state;
@@ -72,12 +54,13 @@ class App extends Component {
           <div>
             <Header user={user.username}
               handleClick={this.handleLogout} />
-            <Nav />
+            <Nav user={user} />
             <Route exact path="/" component={Home} />
             <Route exact path="/login"
               render={() => <Login handleClick={this.handleLogin} />} />
             <Route exact path="/register"
               render={() => <Register handleClick={this.handleRegister} />} />
+            <Route exact path="/profile" component={Profile} />
           </div>
         </Router>
       </div>

@@ -15,33 +15,30 @@ router.get("/logout", (req, res) => {
 function register(username, password, fn) {
   db.User.findOne({ username }).then(dbUser => {
     if (dbUser) {
-      return fn(new Error("User already exists!"));
+      return fn(new Error("User is already registered."));
     }
     db.User.create({
       username: username,
       password: password
-    }).then(user => fn(null, user)).catch(err => fn(new Error("An error occurred. Error: ", err)));
-  }).catch(err => fn(new Error("An error occurred. Error: ", err)));
+    }).then(user => fn(null, user)).catch(err => fn(
+      new Error("An error occurred. Error: ", err)
+    ));
+  }).catch(err => fn(
+    new Error("An error occurred. Error: ", err)
+  ));
 }
 
 router.post("/register", (req, res) => {
-  const { username, password, passwordConf } = req.body;
-  if (password !== passwordConf) {
-    return res.json({
-      error: "Passwords do not match!"
-    });
-  }
+  const { username, password } = req.body;
   register(username, password, function (error, user) {
     if (user) {
-      req.logIn(user, (err) => {
+      req.logIn(user, err => {
         if (err) throw err;
         res.json(req.user);
       });
     } else {
-      console.log(error);
-      return res.json({
-        error: error.message
-      });
+      console.log(error.message);
+      res.status(400).end();
     }
   });
 });

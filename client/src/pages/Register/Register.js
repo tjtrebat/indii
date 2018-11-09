@@ -6,7 +6,7 @@ class Register extends Component {
         username: "",
         password: "",
         passwordConf: "",
-        error: "",
+        errorMsg: "",
         redirect: false
     }
     handleInputChange = event => {
@@ -17,27 +17,46 @@ class Register extends Component {
     }
     handleClick = event => {
         event.preventDefault();
-        const { username, password, passwordConf } = this.state;
-        this.props.handleClick(username, password, passwordConf)
-            .then(err => {
-                const newState = {};
-                if (err) {
-                    newState.error = err.message;
-                } else {
-                    newState.redirect = true;
-                }
-                this.setState(newState);
-            });
+        const { username, password } = this.state;
+        if (this.isFormValid()) {
+            this.props.handleClick(username, password)
+                .then(() => this.setState({
+                    redirect: true
+                })).catch(err => {
+                    console.log("ERROR OCCURRED");
+                    console.log(err);
+                    this.setState({
+                        errorMsg: err.message
+                    });
+                });
+        }
+    }
+    isFormValid() {
+        let { username, password, passwordConf } = this.state;
+        username = username.trim();
+        password = password.trim();
+        let errorMsg;
+        if (!username.length) {
+            errorMsg = "Username can not be empty.";
+        } else if (!password.length) {
+            errorMsg = "Password can not be empty.";
+        } else if (password !== passwordConf) {
+            errorMsg = "Passwords do not match.";
+        }
+        if (!errorMsg) {
+            return true;
+        }
+        this.setState({ errorMsg });
     }
     render() {
-        const { username, password, passwordConf, error, redirect } = this.state;
+        const { username, password, passwordConf, errorMsg, redirect } = this.state;
         if (redirect) {
             return <Redirect to="/" />;
         }
         return (
             <div>
                 <h3>Register</h3>
-                {error ? <span className="error">{error}</span> : ""}
+                {errorMsg ? <span className="error">{errorMsg}</span> : ""}
                 <form>
                     <input type="text" name="username" value={username}
                         onChange={this.handleInputChange} placeholder="Username" /><br />
