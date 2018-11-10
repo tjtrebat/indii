@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { Redirect } from "react-router-dom";
+import { Video } from "../../components/Video";
 import API from "../../utils/API";
 
 class Profile extends Component {
@@ -44,7 +45,9 @@ class Profile extends Component {
       data.append("title", title);
       API.upload(data).then(res => {
         this.setState({
-          videoUrl: res.data.url
+          selectedFile: "",
+          videoUrl: res.data.url,
+          errorMsg: ""
         });
       }).catch(err => {
         console.log(err);
@@ -85,10 +88,7 @@ class Profile extends Component {
             onClick={this.handleFileUpload}>Upload</button>
         </form>
         {videoUrl ? (
-          <video width="320" height="240" controls>
-            <source src={videoUrl} type="video/mp4" />
-            Your browser does not support the video tag.
-          </video>
+          <Video url={videoUrl} width="320" height="240" controls />
         ) : ""}
       </div>
     );
