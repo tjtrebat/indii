@@ -23,11 +23,15 @@
     "nodemon": "^1.11.0"
   },
   "dependencies": {
+    "aws-sdk": "^2.353.0",
     "axios": "^0.18.0",
     "bcrypt-nodejs": "^0.0.3",
     "body-parser": "^1.18.3",
     "cookie-parser": "^1.4.3",
+    "cors": "^2.8.5",
+    "dotenv": "^6.1.0",
     "express": "^4.16.3",
+    "express-fileupload": "^1.0.0",
     "express-session": "^1.15.6",
     "http-errors": "^1.7.1",
     "if-env": "^1.0.4",

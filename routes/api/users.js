@@ -1,13 +1,20 @@
+require("dotenv").config();
 const router = require("express").Router();
+const aws = require("aws-sdk");
 const passport = require("../../config/passport");
 const db = require("../../models");
+const { s3_bucket } = require("../../keys").amazon;
+
+aws.config.region = "us-east-2";
+
+const s3 = new aws.S3();
 
 router.post("/login", passport.authenticate("local"),
   function (req, res) {
     res.json(req.user);
   });
 
-router.get("/logout", (req, res) => {
+router.get("/logout", function (req, res) {
   req.logout();
   res.status(200).end();
 });
@@ -20,24 +27,26 @@ function register(username, password, fn) {
     db.User.create({
       username: username,
       password: password
-    }).then(user => fn(null, user)).catch(err => fn(
-      new Error("An error occurred. Error: ", err)
-    ));
-  }).catch(err => fn(
-    new Error("An error occurred. Error: ", err)
-  ));
+    }).then(user => {
+      fn(null, user)
+    }).catch(err => {
+      fn(new Error("An error occurred. Error: ", err));
+    });
+  }).catch(err => {
+    fn(new Error("An error occurred. Error: ", err));
+  });
 }
 
-router.post("/register", (req, res) => {
+router.post("/register", function (req, res) {
   const { username, password } = req.body;
-  register(username, password, function (error, user) {
+  register(username, password, (error, user) => {
     if (user) {
       req.logIn(user, err => {
         if (err) throw err;
         res.json(req.user);
       });
     } else {
-      console.log(error.message);
+      console.log(error);
       res.status(400).end();
     }
   });
@@ -53,6 +62,32 @@ router.get("/getUserStatus", function (req, res) {
 router.get("/logout", function (req, res) {
   req.logout();
   res.status(200).end();
+});
+
+function restrict(req, res, next) {
+  if (req.user) {
+    return next();
+  }
+  res.status(401).send("Access denied!");
+}
+
+router.post("/upload", restrict, function (req, res) {
+  const videoFile = req.files.file;
+  const fileName = videoFile.name;
+  s3.putObject({
+    ACL: "public-read",
+    Body: videoFile.data,
+    Bucket: s3_bucket,
+    Key: fileName
+  }, function (err, data) {
+    if (err) {
+      console.log(err, err.stack);
+      res.status(500).send(err);
+    } else {
+      data.url = `https://s3.us-east-2.amazonaws.com/${s3_bucket}/${fileName}`;
+      res.json(data);
+    }
+  });
 });
 
 module.exports = router;

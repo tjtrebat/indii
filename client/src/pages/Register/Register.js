@@ -19,16 +19,15 @@ class Register extends Component {
         event.preventDefault();
         const { username, password } = this.state;
         if (this.isFormValid()) {
-            this.props.handleClick(username, password)
-                .then(() => this.setState({
+            this.props.handleClick(username, password).then(() => {
+                this.setState({
                     redirect: true
-                })).catch(err => {
-                    console.log("ERROR OCCURRED");
-                    console.log(err);
-                    this.setState({
-                        errorMsg: err.message
-                    });
                 });
+            }).catch(err => {
+                this.setState({
+                    errorMsg: err.message
+                });
+            });
         }
     }
     isFormValid() {
@@ -42,8 +41,7 @@ class Register extends Component {
             errorMsg = "Password can not be empty.";
         } else if (password !== passwordConf) {
             errorMsg = "Passwords do not match.";
-        }
-        if (!errorMsg) {
+        } else {
             return true;
         }
         this.setState({ errorMsg });

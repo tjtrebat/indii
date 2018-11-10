@@ -18,5 +18,8 @@ export default {
     },
     logout: function () {
         return axios.get("/api/users/logout");
+    },
+    upload: function (data) {
+        return axios.post("api/users/upload", data);
     }
 };

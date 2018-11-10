@@ -17,34 +17,37 @@ class App extends Component {
     this.getUserStatus();
   }
   getUserStatus() {
-    API.getUserStatus()
-      .then(res => this.setState({
+    API.getUserStatus().then(res => {
+      this.setState({
         user: res.data
-      })).catch(err => console.log(err));
+      });
+    }).catch(err => console.log(err));
   }
   handleLogin = (username, password) => {
-    return API.login(username, password)
-      .then(res => this.setState({
+    return API.login(username, password).then(res => {
+      this.setState({
         user: res.data
-      })).catch(err => {
-        throw new Error("Login Error", err);
       });
+    }).catch(err => {
+      throw new Error("Login Error", err);
+    });
   }
   handleRegister = (username, password) => {
     return API.register(username, password)
       .then(res => {
-        console.log(res.data);
         this.setState({
           user: res.data
-        })
+        });
       }).catch(err => {
         throw new Error("Registration Error", err);
       });
   }
   handleLogout = () => {
-    API.logout().then(() => this.setState({
-      user: ""
-    })).catch(err => console.log(err));
+    API.logout().then(() => {
+      this.setState({
+        user: ""
+      });
+    }).catch(err => console.log(err));
   }
   render() {
     const { user } = this.state;

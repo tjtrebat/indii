@@ -3,6 +3,8 @@ const express = require("express");
 const mongoose = require("mongoose");
 const bodyParser = require("body-parser");
 var cookieParser = require("cookie-parser");
+const fileUpload = require("express-fileupload");
+const cors = require("cors");
 const logger = require("morgan");
 const session = require("express-session");
 const path = require("path");
@@ -17,13 +19,17 @@ const MONGODB_URI = process.env.MONGODB_URI || "mongodb://localhost/indii";
 
 mongoose.connect(MONGODB_URI, { useNewUrlParser: true });
 
+app.use(cors());
 app.use(bodyParser.urlencoded({ extended: false }));
 app.use(bodyParser.json());
 app.use(cookieParser());
+app.use(fileUpload());
 app.use(logger("dev"));
+
 if (process.env.NODE_ENV === "production") {
   app.use(express.static("client/build"));
 }
+
 app.use(
   session({
     resave: false,
@@ -45,7 +51,6 @@ app.use(function (err, req, res) {
   res.locals.message = err.message;
   res.locals.error = req.app.get("env") === "development" ? err : {};
   res.status(err.status || 500);
-  res.render("error");
 });
 
 app.get("*", function (req, res) {

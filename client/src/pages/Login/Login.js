@@ -18,15 +18,15 @@ class Login extends Component {
         event.preventDefault();
         const { username, password } = this.state;
         if (this.isFormValid()) {
-            this.props.handleClick(username, password)
-                .then(() => this.setState({
+            this.props.handleClick(username, password).then(() => {
+                this.setState({
                     redirect: true
-                })).catch(err => {
-                    console.log(err);
-                    this.setState({
-                        errorMsg: err.message
-                    });
                 });
+            }).catch(err => {
+                this.setState({
+                    errorMsg: err.message
+                });
+            });
         }
     }
     isFormValid() {
@@ -38,8 +38,7 @@ class Login extends Component {
             errorMsg = "Username can not be empty.";
         } else if (!password.length) {
             errorMsg = "Password can not be empty.";
-        }
-        if (!errorMsg) {
+        } else {
             return true;
         }
         this.setState({ errorMsg });

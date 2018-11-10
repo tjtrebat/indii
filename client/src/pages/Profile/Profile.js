@@ -1,8 +1,11 @@
 import React, { Component } from "react";
+import API from "../../utils/API";
 
 class Profile extends Component {
   state = {
-    selectedFile: ""
+    selectedFile: "",
+    fileName: "",
+    videoUrl: ""
   }
   handleInputChange = event => {
     this.setState({
@@ -11,9 +14,16 @@ class Profile extends Component {
   }
   handleFileUpload = event => {
     event.preventDefault();
-    console.log("File: ", this.state.selectedFile);
+    const data = new FormData();
+    data.append("file", this.state.selectedFile);
+    API.upload(data).then(res => {
+      this.setState({
+        videoUrl: res.data.url
+      });
+    }).catch(err => console.log(err));
   }
   render() {
+    const { videoUrl } = this.state;
     return (
       <div>
         <h3>Profile</h3>
@@ -23,6 +33,12 @@ class Profile extends Component {
           <button type="submit"
             onClick={this.handleFileUpload}>Upload</button>
         </form>
+        {videoUrl ? (
+          <video width="320" height="240" controls>
+            <source src={videoUrl} type="video/mp4" />
+            Your browser does not support the video tag.
+          </video>
+        ) : ""}
       </div>
     );
   }
