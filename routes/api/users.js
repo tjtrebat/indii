@@ -68,24 +68,29 @@ function restrict(req, res, next) {
   if (req.user) {
     return next();
   }
-  res.status(401).send("Access denied!");
+  res.status(401).end();
 }
 
 router.post("/upload", restrict, function (req, res) {
   const videoFile = req.files.file;
-  const fileName = videoFile.name;
+  console.log("Title: ", req.files.title);
+  const fileName = `${req.user.username}_${videoFile.name}`;
+  if (!fileName.endsWith(".mp4")) {
+    return res.status(400).end();
+  }
   s3.putObject({
     ACL: "public-read",
     Body: videoFile.data,
     Bucket: s3_bucket,
     Key: fileName
-  }, function (err, data) {
+  }, function (err) {
     if (err) {
       console.log(err, err.stack);
-      res.status(500).send(err);
+      res.status(500).end();
     } else {
-      data.url = `https://s3.us-east-2.amazonaws.com/${s3_bucket}/${fileName}`;
-      res.json(data);
+      res.json({
+        url: `https://s3.us-east-2.amazonaws.com/${s3_bucket}/${fileName}`
+      });
     }
   });
 });

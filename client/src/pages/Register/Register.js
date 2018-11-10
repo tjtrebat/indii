@@ -35,9 +35,9 @@ class Register extends Component {
         username = username.trim();
         password = password.trim();
         let errorMsg;
-        if (!username.length) {
+        if (!username) {
             errorMsg = "Username can not be empty.";
-        } else if (!password.length) {
+        } else if (!password) {
             errorMsg = "Password can not be empty.";
         } else if (password !== passwordConf) {
             errorMsg = "Passwords do not match.";

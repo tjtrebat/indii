@@ -14,14 +14,16 @@ class App extends Component {
     user: ""
   }
   componentDidMount() {
-    this.getUserStatus();
-  }
-  getUserStatus() {
-    API.getUserStatus().then(res => {
+    this.getUserStatus().then(res => {
       this.setState({
         user: res.data
-      });
-    }).catch(err => console.log(err));
+      })
+    }).catch(err => {
+      console.log(err);
+    });
+  }
+  getUserStatus() {
+    return API.getUserStatus();
   }
   handleLogin = (username, password) => {
     return API.login(username, password).then(res => {
@@ -47,7 +49,7 @@ class App extends Component {
       this.setState({
         user: ""
       });
-    }).catch(err => console.log(err));
+    });
   }
   render() {
     const { user } = this.state;
@@ -63,7 +65,9 @@ class App extends Component {
               render={() => <Login handleClick={this.handleLogin} />} />
             <Route exact path="/register"
               render={() => <Register handleClick={this.handleRegister} />} />
-            <Route exact path="/profile" component={Profile} />
+            <Route exact path="/profile"
+              render={() => <Profile user={user.username}
+                getUserStatus={this.getUserStatus} />} />
           </div>
         </Router>
       </div>

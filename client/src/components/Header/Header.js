@@ -1,7 +1,10 @@
 import React, { Component } from "react";
-import { Link } from "react-router-dom";
+import { Link, Redirect } from "react-router-dom";
 
 class Header extends Component {
+    state = {
+        redirect: false
+    }
     handleClick = event => {
         event.preventDefault();
         this.props.handleClick();
@@ -9,6 +12,7 @@ class Header extends Component {
     render() {
         return (
             <div>
+                {this.state.redirect ? <Redirect to="/" /> : ""}
                 {this.props.user ? (
                     <div>
                         <span>Welcome, {this.props.user}!</span>
