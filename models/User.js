@@ -13,6 +13,12 @@ const UserSchema = new Schema({
     type: String,
     required: true
   },
+  videos: [
+    {
+      type: Schema.Types.ObjectId,
+      ref: "Video"
+    }
+  ],
   createdAt: {
     type: Date,
     default: Date.now

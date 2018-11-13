@@ -7,12 +7,16 @@ class Profile extends Component {
   state = {
     title: "",
     selectedFile: "",
-    videoUrl: "",
+    videos: this.props.user ? this.props.user.videos : [],
     errorMsg: "",
     redirect: false
   }
   componentDidMount() {
-    this.props.getUserStatus().catch(err => {
+    this.props.getUserStatus().then(res => {
+      this.setState({
+        videos: res.data.videos
+      });
+    }).catch(err => {
       this.setState({
         redirect: true
       });
@@ -44,9 +48,11 @@ class Profile extends Component {
       data.append("file", selectedFile);
       data.append("title", title);
       API.upload(data).then(res => {
+        console.log(res.data);
         this.setState({
+          title: "",
           selectedFile: "",
-          videoUrl: res.data.url,
+          videos: res.data,
           errorMsg: ""
         });
       }).catch(err => {
@@ -71,7 +77,7 @@ class Profile extends Component {
     this.setState({ errorMsg });
   }
   render() {
-    const { title, videoUrl, errorMsg, redirect } = this.state;
+    const { title, videos, errorMsg, redirect } = this.state;
     if (redirect) {
       return <Redirect to="/" />;
     }
@@ -87,8 +93,15 @@ class Profile extends Component {
           <button type="submit"
             onClick={this.handleFileUpload}>Upload</button>
         </form>
-        {videoUrl ? (
-          <Video url={videoUrl} width="320" height="240" controls />
+        {videos ? (
+          <ul>
+            {videos.map(video => (
+              <li key={video._id}>
+                <span>{`Title: ${video.title}, Uploaded: ${video.createdAt}`}</span><br />
+                <Video url={video.url} width="320" height="240" controls />
+              </li>
+            ))}
+          </ul>
         ) : ""}
       </div>
     );

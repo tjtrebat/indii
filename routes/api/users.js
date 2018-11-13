@@ -3,7 +3,7 @@ const router = require("express").Router();
 const aws = require("aws-sdk");
 const passport = require("../../config/passport");
 const db = require("../../models");
-const { s3_bucket } = require("../../keys").amazon;
+const { s3Bucket } = require("../../keys").amazon;
 
 aws.config.region = "us-east-2";
 
@@ -43,7 +43,7 @@ router.post("/register", function (req, res) {
     if (user) {
       req.logIn(user, err => {
         if (err) throw err;
-        res.json(req.user);
+        res.json(user);
       });
     } else {
       console.log(error);
@@ -54,9 +54,17 @@ router.post("/register", function (req, res) {
 
 router.get("/getUserStatus", function (req, res) {
   if (req.user) {
-    return res.json(req.user);
+    db.User.findOne({
+      username: req.user.username
+    }).populate("videos").then(function (user) {
+      res.json(user);
+    }).catch(function (err) {
+      console.log(err);
+      res.status(500).end();
+    });
+  } else {
+    res.status(401).end();
   }
-  res.status(401).end();
 });
 
 router.get("/logout", function (req, res) {
@@ -71,28 +79,52 @@ function restrict(req, res, next) {
   res.status(401).end();
 }
 
-router.post("/upload", restrict, function (req, res) {
-  const videoFile = req.files.file;
-  console.log("Title: ", req.files.title);
-  const fileName = `${req.user.username}_${videoFile.name}`;
+function uploadVideo(videoFile, title, username, fn) {
+  const fileName = `${username}_${videoFile.name}`;
   if (!fileName.endsWith(".mp4")) {
-    return res.status(400).end();
+    return fn(new Error("Invalid file format!"));
   }
-  s3.putObject({
-    ACL: "public-read",
-    Body: videoFile.data,
-    Bucket: s3_bucket,
-    Key: fileName
-  }, function (err) {
-    if (err) {
-      console.log(err, err.stack);
-      res.status(500).end();
-    } else {
-      res.json({
-        url: `https://s3.us-east-2.amazonaws.com/${s3_bucket}/${fileName}`
-      });
-    }
+  const videoUrl = `https://s3.us-east-2.amazonaws.com/${s3Bucket}/${fileName}`;
+  db.Video.findOneAndUpdate({
+    url: videoUrl
+  }, {
+    title: title,
+    url: videoUrl
+  }, {
+    upsert: true,
+    new: true,
+    setDefaultsOnInsert: true
+  }).then(function(video) {
+    return db.User.findOneAndUpdate({
+      username: username
+    }, { $addToSet: { videos: video._id } },
+    { new: true }).populate("videos");
+  }).then(function(user) {
+    console.log("Uploading to S3");
+    s3.putObject({
+      ACL: "public-read",
+      Body: videoFile.data,
+      Bucket: s3Bucket,
+      Key: fileName
+    }, function (err) {
+      if (err) throw err;
+      return fn(null, user.videos);
+    });
+  }).catch(function (err) {
+    return fn(new Error("An error occurred. Error: ", err));
   });
+}
+
+router.post("/upload", restrict, function (req, res) {
+  uploadVideo(req.files.file, req.body.title, req.user.username,
+    (err, videos) => {
+      if (videos) {
+        res.json(videos);
+      } else {
+        console.log(err);
+        res.status(500).end();
+      }
+    });
 });
 
 module.exports = router;

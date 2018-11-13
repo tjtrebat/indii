@@ -66,7 +66,7 @@ class App extends Component {
             <Route exact path="/register"
               render={() => <Register handleClick={this.handleRegister} />} />
             <Route exact path="/profile"
-              render={() => <Profile user={user.username}
+              render={() => <Profile user={user}
                 getUserStatus={this.getUserStatus} />} />
           </div>
         </Router>
