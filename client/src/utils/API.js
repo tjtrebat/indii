@@ -21,5 +21,8 @@ export default {
     },
     upload: function (data) {
         return axios.post("api/users/upload", data);
+    },
+    getVideos: function () {
+        return axios.get("api/videos");
     }
 };

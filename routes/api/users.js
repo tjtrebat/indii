@@ -54,11 +54,10 @@ router.post("/register", function (req, res) {
 
 router.get("/getUserStatus", function (req, res) {
   if (req.user) {
-    db.User.findOne({
-      username: req.user.username
-    }).populate("videos").then(function (user) {
-      res.json(user);
-    }).catch(function (err) {
+    db.User.findById(req.user._id).populate("videos").then(
+      function (user) {
+        res.json(user);
+      }).catch(function (err) {
       console.log(err);
       res.status(500).end();
     });
@@ -79,8 +78,8 @@ function restrict(req, res, next) {
   res.status(401).end();
 }
 
-function uploadVideo(videoFile, title, username, fn) {
-  const fileName = `${username}_${videoFile.name}`;
+function uploadVideo(videoFile, title, user, fn) {
+  const fileName = `${user.username}_${videoFile.name}`;
   if (!fileName.endsWith(".mp4")) {
     return fn(new Error("Invalid file format!"));
   }
@@ -89,17 +88,17 @@ function uploadVideo(videoFile, title, username, fn) {
     url: videoUrl
   }, {
     title: title,
-    url: videoUrl
+    url: videoUrl,
+    user: user._id
   }, {
     upsert: true,
     new: true,
     setDefaultsOnInsert: true
   }).then(function(video) {
-    return db.User.findOneAndUpdate({
-      username: username
-    }, { $addToSet: { videos: video._id } },
-    { new: true }).populate("videos");
-  }).then(function(user) {
+    return db.User.findByIdAndUpdate(user._id,
+      { $addToSet: { videos: video._id } },
+      { new: true }).populate("videos");
+  }).then(function(dbUser) {
     console.log("Uploading to S3");
     s3.putObject({
       ACL: "public-read",
@@ -108,7 +107,7 @@ function uploadVideo(videoFile, title, username, fn) {
       Key: fileName
     }, function (err) {
       if (err) throw err;
-      return fn(null, user.videos);
+      return fn(null, dbUser.videos);
     });
   }).catch(function (err) {
     return fn(new Error("An error occurred. Error: ", err));
@@ -116,7 +115,7 @@ function uploadVideo(videoFile, title, username, fn) {
 }
 
 router.post("/upload", restrict, function (req, res) {
-  uploadVideo(req.files.file, req.body.title, req.user.username,
+  uploadVideo(req.files.file, req.body.title, req.user,
     (err, videos) => {
       if (videos) {
         res.json(videos);
