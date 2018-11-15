@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Profile from "./pages/Profile";
+import UserProfile from "./pages/UserProfile";
 import Header from "./components/Header";
 import { Nav } from "./components/Nav";
 import API from "./utils/API";
@@ -68,6 +69,7 @@ class App extends Component {
             <Route exact path="/profile"
               render={() => <Profile user={user}
                 getUserStatus={this.getUserStatus} />} />
+            <Route exact path="/profile/:username" component={UserProfile} />
           </div>
         </Router>
       </div>

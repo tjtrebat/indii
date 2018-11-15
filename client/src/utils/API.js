@@ -20,9 +20,9 @@ export default {
         return axios.get("/api/users/logout");
     },
     upload: function (data) {
-        return axios.post("api/users/upload", data);
+        return axios.post("/api/users/upload", data);
     },
-    getVideos: function () {
-        return axios.get("api/videos");
+    getVideos: function (username) {
+        return axios.get("/api/videos/" + (username ? username : ""));
     }
 };

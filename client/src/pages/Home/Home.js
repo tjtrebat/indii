@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { Link } from "react-router-dom";
 import API from "../../utils/API";
 
 
@@ -22,7 +23,9 @@ class Home extends Component {
                     <ul>
                         {videos.map(video => (
                             <li key={video._id}>
-                                <span>{video.title} by {video.user.username}<br />{video.createdAt}</span>
+                                <span>{video.title} by 
+                                <Link to={`/profile/${video.user.username}`}>{video.user.username}</Link><br />
+                                {video.createdAt}</span>
                             </li>
                         ))}
                     </ul>
