@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Route } from "react-router-dom";
 import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
-import Profile from "./pages/Profile";
+import EditProfile from "./pages/EditProfile";
 import UserProfile from "./pages/UserProfile";
 import Header from "./components/Header";
 import { Nav } from "./components/Nav";
@@ -67,7 +67,7 @@ class App extends Component {
             <Route exact path="/register"
               render={() => <Register handleClick={this.handleRegister} />} />
             <Route exact path="/profile"
-              render={() => <Profile user={user}
+              render={() => <EditProfile user={user}
                 getUserStatus={this.getUserStatus} />} />
             <Route exact path="/profile/:username" component={UserProfile} />
           </div>

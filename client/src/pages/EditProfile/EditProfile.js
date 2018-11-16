@@ -3,7 +3,7 @@ import { Redirect } from "react-router-dom";
 import { Video } from "../../components/Video";
 import API from "../../utils/API";
 
-class Profile extends Component {
+class EditProfile extends Component {
   state = {
     title: "",
     selectedFile: "",
@@ -108,4 +108,4 @@ class Profile extends Component {
   }
 }
 
-export default Profile;
+export default EditProfile;
