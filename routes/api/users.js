@@ -78,28 +78,35 @@ function restrict(req, res, next) {
   res.status(401).end();
 }
 
-function uploadVideo(videoFile, title, user, fn) {
+function updateVideo(url, title, user) {
+  return db.Video.findOneAndUpdate({ url }, {
+    title,
+    url,
+    user
+  }, {
+    upsert: true,
+    new: true,
+    setDefaultsOnInsert: true
+  });
+}
+
+function addUserVideo(user, video) {
+  return db.User.findByIdAndUpdate(user,
+    { $addToSet: { videos: video } },
+    { new: true }).populate("videos");
+}
+
+function uploadVideo(video, user, fn) {
+  const { videoFile, title } = video;
   const fileName = `${user.username}_${videoFile.name}`;
   if (!fileName.endsWith(".mp4")) {
     return fn(new Error("Invalid file format!"));
   }
   const videoUrl = `https://s3.us-east-2.amazonaws.com/${s3Bucket}/${fileName}`;
-  db.Video.findOneAndUpdate({
-    url: videoUrl
-  }, {
-    title: title,
-    url: videoUrl,
-    user: user._id
-  }, {
-    upsert: true,
-    new: true,
-    setDefaultsOnInsert: true
-  }).then(function(video) {
-    return db.User.findByIdAndUpdate(user._id,
-      { $addToSet: { videos: video._id } },
-      { new: true }).populate("videos");
-  }).then(function(dbUser) {
-    console.log("Uploading to S3");
+  updateVideo(videoUrl, title, user._id).then(
+    function(dbVideo) {
+      return addUserVideo(user._id, dbVideo._id);
+    }).then(function(dbUser) {
     s3.putObject({
       ACL: "public-read",
       Body: videoFile.data,
@@ -115,15 +122,17 @@ function uploadVideo(videoFile, title, user, fn) {
 }
 
 router.post("/upload", restrict, function (req, res) {
-  uploadVideo(req.files.file, req.body.title, req.user,
-    (err, videos) => {
-      if (videos) {
-        res.json(videos);
-      } else {
-        console.log(err);
-        res.status(500).end();
-      }
-    });
+  uploadVideo({
+    videoFile: req.files.file,
+    title: req.body.title
+  }, req.user, function (err, videos) {
+    if (videos) {
+      res.json(videos);
+    } else {
+      console.log(err);
+      res.status(500).end();
+    }
+  });
 });
 
 module.exports = router;
