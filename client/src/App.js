@@ -4,6 +4,7 @@ import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import EditProfile from "./pages/EditProfile";
+import UploadVideo from "./pages/UploadVideo";
 import UserProfile from "./pages/UserProfile";
 import Header from "./components/Header";
 import { Nav } from "./components/Nav";
@@ -70,6 +71,9 @@ class App extends Component {
               render={() => <EditProfile user={user}
                 getUserStatus={this.getUserStatus} />} />
             <Route exact path="/profile/:username" component={UserProfile} />
+            <Route exact path="/upload"
+              render={() => <UploadVideo user={user}
+                getUserStatus={this.getUserStatus} />} />
           </div>
         </Router>
       </div>

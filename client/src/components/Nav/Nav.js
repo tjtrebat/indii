@@ -12,10 +12,9 @@ export const Nav = props => {
                     <ul>
                         <li><NavLink to="/">Home</NavLink></li>
                         <li><NavLink exact to="/profile">Profile</NavLink></li>
+                        <li><NavLink exact to="/upload">Upload Video</NavLink></li>
                     </ul>
                 )}
-            <ul>
-            </ul>
         </nav>
     );
 }
