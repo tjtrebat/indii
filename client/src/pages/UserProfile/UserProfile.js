@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Video } from "../../components/Video";
+import { VideoList } from "../../components/VideoList";
 import API from "../../utils/API";
 
 class UserProfile extends Component {
@@ -8,6 +8,7 @@ class UserProfile extends Component {
   }
   componentDidMount() {
     API.getVideos(this.props.match.params.username).then(res => {
+      console.log(res.data.videos);
       this.setState({
         videos: res.data.videos
       });
@@ -18,16 +19,7 @@ class UserProfile extends Component {
     return (
       <div>
         <p>Hello {this.props.match.params.username}!</p>
-        {videos ? (
-          <ul>
-            {videos.map(video => (
-              <li key={video._id}>
-                <span>{`Title: ${video.title}, Uploaded: ${video.createdAt}`}</span><br />
-                <Video url={video.url} width="320" height="240" controls />
-              </li>
-            ))}
-          </ul>
-        ) : ""}
+        <VideoList videos={videos} />
       </div>
     );
   }

@@ -1,29 +1,32 @@
 import React, { Component } from "react";
 import { Redirect } from "react-router-dom";
-import { Video } from "../../components/Video";
+import { VideoList } from "../../components/VideoList";
 
 class EditProfile extends Component {
-  state = {
-    videos: this.props.user ? this.props.user.videos : [],
-    redirect: false
+  constructor(props) {
+    super(props);
+    this.state = {
+      videos: this.props.user ? this.props.user.videos : [],
+      redirect: false
+    }
+    this.sendRedirect = this.sendRedirect.bind(this);
   }
   componentDidMount() {
     this.props.getUserStatus().then(res => {
       this.setState({
         videos: res.data.videos
       });
-    }).catch(() => {
-      this.setState({
-        redirect: true
-      });
-    });
+    }).catch(this.sendRedirect);
   }
   componentWillReceiveProps(newProps) {
     if (!newProps.user) {
-      this.setState({
-        redirect: true
-      });
+      this.sendRedirect();
     }
+  }
+  sendRedirect() {
+    this.setState({
+      redirect: true
+    });
   }
   render() {
     const { videos, redirect } = this.state;
@@ -33,16 +36,7 @@ class EditProfile extends Component {
     return (
       <div>
         <h3>Profile</h3>
-        {videos ? (
-          <ul>
-            {videos.map(video => (
-              <li key={video._id}>
-                <span>{`Title: ${video.title}, Uploaded: ${video.createdAt}`}</span><br />
-                <Video url={video.url} width="320" height="240" controls />
-              </li>
-            ))}
-          </ul>
-        ) : ""}
+        <VideoList videos={videos} />
       </div>
     );
   }

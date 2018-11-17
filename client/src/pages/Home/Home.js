@@ -1,7 +1,6 @@
 import React, { Component } from "react";
-import { Link } from "react-router-dom";
+import { VideoList } from "../../components/VideoList";
 import API from "../../utils/API";
-
 
 class Home extends Component {
     state = {
@@ -19,19 +18,7 @@ class Home extends Component {
         return (
             <div>
                 <h3>Home</h3>
-                {videos ? (
-                    <ul>
-                        {videos.map(video => (
-                            <li key={video._id}>
-                                <span>{video.title} by 
-                                <Link to={`/users/${video.user.username}`}>
-                                    {video.user.username}
-                                </Link><br />
-                                {video.createdAt}</span>
-                            </li>
-                        ))}
-                    </ul>
-                ) : ""}
+                <VideoList videos={videos} />
             </div>
         );
     }
