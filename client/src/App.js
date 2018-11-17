@@ -70,10 +70,10 @@ class App extends Component {
             <Route exact path="/profile"
               render={() => <EditProfile user={user}
                 getUserStatus={this.getUserStatus} />} />
-            <Route exact path="/profile/:username" component={UserProfile} />
-            <Route exact path="/upload"
+            <Route exact path="/profile/upload"
               render={() => <UploadVideo user={user}
                 getUserStatus={this.getUserStatus} />} />
+            <Route exact path="/users/:username" component={UserProfile} />
           </div>
         </Router>
       </div>

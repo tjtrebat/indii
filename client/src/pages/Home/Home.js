@@ -24,7 +24,9 @@ class Home extends Component {
                         {videos.map(video => (
                             <li key={video._id}>
                                 <span>{video.title} by 
-                                <Link to={`/profile/${video.user.username}`}>{video.user.username}</Link><br />
+                                <Link to={`/users/${video.user.username}`}>
+                                    {video.user.username}
+                                </Link><br />
                                 {video.createdAt}</span>
                             </li>
                         ))}

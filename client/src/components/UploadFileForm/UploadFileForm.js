@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { Redirect } from "react-router-dom";
 import API from "../../utils/API";
 
 class UploadFileForm extends Component {
@@ -7,11 +8,12 @@ class UploadFileForm extends Component {
     this.state = {
       title: "",
       selectedFile: "",
-      error: ""
+      error: "",
+      redirect: false
     };
     this.performFileUpload = this.performFileUpload.bind(this);
-    this.resetForm = this.resetForm.bind(this);
     this.setErrorMessage = this.setErrorMessage.bind(this);
+    this.sendRedirect = this.sendRedirect.bind(this);
   }
   handleInputChange = event => {
     const { name, value } = event.target;
@@ -24,30 +26,10 @@ class UploadFileForm extends Component {
       selectedFile: event.target.files[0]
     });
   }
-  isFileFieldValid() {
-    const { selectedFile } = this.state;
-    const fileName = selectedFile.name;
-    if (!fileName || !fileName.match(/\.mp4$/)) {
-      return false;
-    }
-    return true;
-  }
-  isFormFieldBlank(fieldName) {
-    const value = this.state[fieldName];
-    if (typeof value === "undefined" || !value.trim()) {
-      return true;
-    }
-    return false;
-  }
-  createFormData() {
-    const { selectedFile, title } = this.state;
-    const data = new FormData();
-    data.append("file", selectedFile);
-    data.append("title", title);
-    return data;
-  }
-  isFormFieldsValid() {
-    return !this.isFormFieldBlank("title");
+  handleFileUpload = event => {
+    event.preventDefault();
+    this.validateForm().then(this.performFileUpload).then(
+      this.sendRedirect).catch(this.setErrorMessage);
   }
   validateForm() {
     return new Promise((resolve, reject) => {
@@ -64,27 +46,48 @@ class UploadFileForm extends Component {
     const data = this.createFormData();
     return new Promise((resolve, reject) => {
       API.upload(data).then(resolve).catch(() => {
-        reject(new Error("A file upload error has occurred."))
+        reject(new Error("A file upload error occurred."))
       });
     });
   }
-  resetForm() {
-    this.setState({
-      title: "",
-      selectedFile: "",
-      error: ""
-    });
+  createFormData() {
+    const { selectedFile, title } = this.state;
+    const data = new FormData();
+    data.append("file", selectedFile);
+    data.append("title", title);
+    return data;
+  }
+  isFileFieldValid() {
+    const { selectedFile } = this.state;
+    const fileName = selectedFile.name;
+    if (!fileName || !fileName.match(/\.(mp4|MP4)$/)) {
+      return false;
+    }
+    return true;
+  }
+  isFormFieldBlank(fieldName) {
+    const value = this.state[fieldName];
+    if (typeof value === "undefined" || !value.trim()) {
+      return true;
+    }
+    return false;
+  }
+  isFormFieldsValid() {
+    return !this.isFormFieldBlank("title");
   }
   setErrorMessage(error) {
     this.setState({ error: error.message });
   }
-  handleFileUpload = event => {
-    event.preventDefault();
-    this.validateForm().then(this.performFileUpload).then(
-      this.resetForm).catch(this.setErrorMessage);
+  sendRedirect() {
+    this.setState({
+      redirect: true
+    });
   }
   render() {
-    const { title, error } = this.state;
+    const { title, error, redirect } = this.state;
+    if (redirect) {
+      return <Redirect to="/profile" />;
+    }
     return (
       <div>
         {error ? <span className="error">{error}</span> : ""}

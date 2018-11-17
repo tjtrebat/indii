@@ -8,17 +8,18 @@ class UploadVideo extends Component {
   }
   componentDidMount() {
     this.props.getUserStatus().catch(() => {
-      this.setState({
-        redirect: true
-      });
+      this.sendRedirect();
     });
   }
   componentWillReceiveProps(newProps) {
     if (!newProps.user) {
-      this.setState({
-        redirect: true
-      });
+      this.sendRedirect();
     }
+  }
+  sendRedirect() {
+    this.setState({
+      redirect: true
+    });
   }
   render() {
     const { redirect } = this.state;
