@@ -1,15 +1,17 @@
 import React, { Component } from "react";
 import { Redirect } from "react-router-dom";
-import UploadFileForm from "../../components/UploadFileForm";
+import UploadVideoForm from "../../components/UploadVideoForm";
 
 class UploadVideo extends Component {
-  state = {
-    redirect: false
+  constructor(props) {
+    super(props);
+    this.state = {
+      redirect: false
+    }
+    this.sendRedirect = this.sendRedirect.bind(this);
   }
   componentDidMount() {
-    this.props.getUserStatus().catch(() => {
-      this.sendRedirect();
-    });
+    this.props.getUserStatus().catch(this.sendRedirect);
   }
   componentWillReceiveProps(newProps) {
     if (!newProps.user) {
@@ -29,7 +31,7 @@ class UploadVideo extends Component {
     return (
       <div>
         <h3>Upload Video</h3>
-        <UploadFileForm />
+        <UploadVideoForm />
       </div>
     )
   }

@@ -1,7 +1,7 @@
 import React, { Component } from "react";
 import { Video } from "../../components/Video";
 
-class UserVideo extends Component {
+class ShowVideo extends Component {
   state = {
     video: null
   }
@@ -23,4 +23,4 @@ class UserVideo extends Component {
   }
 }
 
-export default UserVideo;
+export default ShowVideo;

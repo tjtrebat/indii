@@ -2,7 +2,7 @@ import React, { Component } from "react";
 import { Redirect } from "react-router-dom";
 import API from "../../utils/API";
 
-class UploadFileForm extends Component {
+class UploadVideoForm extends Component {
   constructor(props) {
     super(props);
     this.state = {
@@ -12,7 +12,7 @@ class UploadFileForm extends Component {
       redirect: false
     };
     this.performFileUpload = this.performFileUpload.bind(this);
-    this.setErrorMessage = this.setErrorMessage.bind(this);
+    this.addErrorMessage = this.addErrorMessage.bind(this);
     this.sendRedirect = this.sendRedirect.bind(this);
   }
   handleInputChange = event => {
@@ -28,27 +28,27 @@ class UploadFileForm extends Component {
   }
   handleFileUpload = event => {
     event.preventDefault();
-    this.validateForm().then(this.performFileUpload).then(
-      this.sendRedirect).catch(this.setErrorMessage);
+    const formErrors = this.validateForm();
+    if (formErrors) {
+      this.addErrorMessage(formErrors[0]);
+    } else {
+      this.performFileUpload();
+    }
   }
   validateForm() {
-    return new Promise((resolve, reject) => {
-      if (!this.isFormFieldsValid()) {
-        reject(new Error("Title must not be blank!"));
-      } else if (!this.isFileFieldValid()) {
-        reject(new Error("Invalid file type (.mp4)."));
-      } else {
-        resolve();
-      }
-    });
+    const formErrors = [];
+    if (!this.isFormFieldsValid()) {
+      formErrors.push(new Error("Title must not be empty."));
+    } else if (!this.isFileFieldValid()) {
+      formErrors.push(new Error("Invalid file format."));
+    }
   }
   performFileUpload() {
-    const data = this.createFormData();
-    return new Promise((resolve, reject) => {
-      API.upload(data).then(resolve).catch(() => {
-        reject(new Error("A file upload error occurred."))
-      });
-    });
+    return API.upload(this.createFormData()).then(
+      this.sendRedirect).catch(err => {
+        console.log(err);
+        this.addErrorMessage(err);
+      })
   }
   createFormData() {
     const { selectedFile, title } = this.state;
@@ -75,7 +75,7 @@ class UploadFileForm extends Component {
   isFormFieldsValid() {
     return !this.isFormFieldBlank("title");
   }
-  setErrorMessage(error) {
+  addErrorMessage(error) {
     this.setState({ error: error.message });
   }
   sendRedirect() {
@@ -104,4 +104,4 @@ class UploadFileForm extends Component {
   }
 }
 
-export default UploadFileForm;
+export default UploadVideoForm;

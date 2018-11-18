@@ -1,13 +1,7 @@
 require("dotenv").config();
 const router = require("express").Router();
-const aws = require("aws-sdk");
 const passport = require("../../config/passport");
 const db = require("../../models");
-const { s3Bucket } = require("../../keys").amazon;
-
-aws.config.region = "us-east-2";
-
-const s3 = new aws.S3();
 
 router.post("/login", passport.authenticate("local"),
   function (req, res) {
@@ -25,8 +19,8 @@ function register(username, password, fn) {
       return fn(new Error("User is already registered."));
     }
     db.User.create({
-      username: username,
-      password: password
+      username,
+      password
     }).then(user => {
       fn(null, user)
     }).catch(err => {
@@ -53,10 +47,11 @@ router.post("/register", function (req, res) {
 });
 
 router.get("/getUserStatus", function (req, res) {
-  if (req.user) {
-    db.User.findById(req.user._id).populate("videos").then(
-      function (user) {
-        res.json(user);
+  const user = req.user;
+  if (user) {
+    db.User.findById(user._id).populate("videos").then(
+      function (dbUser) {
+        res.json(dbUser);
       }).catch(function (err) {
       console.log(err);
       res.status(500).end();
@@ -69,70 +64,6 @@ router.get("/getUserStatus", function (req, res) {
 router.get("/logout", function (req, res) {
   req.logout();
   res.status(200).end();
-});
-
-function restrict(req, res, next) {
-  if (req.user) {
-    return next();
-  }
-  res.status(401).end();
-}
-
-function updateVideo(url, title, user) {
-  return db.Video.findOneAndUpdate({ url }, {
-    title,
-    url,
-    user
-  }, {
-    upsert: true,
-    new: true,
-    setDefaultsOnInsert: true
-  });
-}
-
-function addUserVideo(user, video) {
-  return db.User.findByIdAndUpdate(user,
-    { $addToSet: { videos: video } },
-    { new: true }).populate("videos");
-}
-
-function uploadVideo(video, user, fn) {
-  const { videoFile, title } = video;
-  const fileName = `${user.username}_${videoFile.name}`;
-  if (!fileName.endsWith(".mp4")) {
-    return fn(new Error("Invalid file format!"));
-  }
-  const videoUrl = `https://s3.us-east-2.amazonaws.com/${s3Bucket}/${fileName}`;
-  updateVideo(videoUrl, title, user._id).then(
-    function(dbVideo) {
-      return addUserVideo(user._id, dbVideo._id);
-    }).then(function(dbUser) {
-    s3.putObject({
-      ACL: "public-read",
-      Body: videoFile.data,
-      Bucket: s3Bucket,
-      Key: fileName
-    }, function (err) {
-      if (err) throw err;
-      return fn(null, dbUser.videos);
-    });
-  }).catch(function (err) {
-    return fn(new Error("An error occurred. Error: ", err));
-  });
-}
-
-router.post("/upload", restrict, function (req, res) {
-  uploadVideo({
-    videoFile: req.files.file,
-    title: req.body.title
-  }, req.user, function (err, videos) {
-    if (videos) {
-      res.json(videos);
-    } else {
-      console.log(err);
-      res.status(500).end();
-    }
-  });
 });
 
 module.exports = router;

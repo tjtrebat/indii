@@ -20,7 +20,7 @@ export default {
         return axios.get("/api/users/logout");
     },
     upload: function (data) {
-        return axios.post("/api/users/upload", data);
+        return axios.post("/api/profile/upload", data);
     },
     getVideos: function (username) {
         return axios.get("/api/videos/" + (username ? username : ""));
