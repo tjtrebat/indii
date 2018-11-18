@@ -17,8 +17,8 @@ function restrict(req, res, next) {
 function createOrUpdateVideo(video) {
   const { url, title, user } = video;
   return db.Video.findOneAndUpdate({ url }, {
-    title,
     url,
+    title,
     user
   }, {
     upsert: true,
@@ -27,38 +27,57 @@ function createOrUpdateVideo(video) {
   });
 }
 
-function addUserVideo(userId, video) {
+function addUserVideo(userId, videoId) {
   return db.User.findByIdAndUpdate(userId,
-    { $addToSet: { videos: video } },
+    { $addToSet: { videos: videoId } },
     { new: true }).populate("videos");
 }
 
-function validateForm(data) {
-  const { title, fileName } = data;
-  const formErrors = [];
-  if (!title.trim()) {
-    formErrors.push(new Error("Title must not be empty."));
-  } else if (!fileName.match(/\.(mp4|MP4)$/u)) {
-    formErrors.push(new Error("Invalid file format."));
-  }
-  return formErrors;
+function isValidMp4File(videoFile) {
+  const { name, mimetype } = videoFile;
+  return name.match(/\.(mp4|MP4)$/u) && mimetype === "video/mp4";
 }
 
-function upload(videoData, fn) {
-  const { title, fileName, data, user } = videoData;
+function isBlank(value) {
+  return !(value && value.trim());
+}
+
+function validateForm(data) {
+  const { title, videoFile } = data;
+  return new Promise((resolve, reject) => {
+    if (isBlank(title)) {
+      reject(new Error("Title must not be empty."));
+    } else if (!isValidMp4File(videoFile)) {
+      reject(new Error("Invalid (.mp4) file."));
+    } else {
+      resolve();
+    }
+  });
+}
+
+function putObjectInS3Storage(videoFile, fn) {
+  s3.putObject({
+    ACL: "public-read",
+    Body: videoFile.data,
+    Bucket: s3Bucket,
+    Key: videoFile.name
+  }, function (err) {
+    if (err) console.log(err, err.stack);
+    fn(err);
+  });
+}
+
+function upload(video, fn) {
+  const { user, title, videoFile } = video;
+  const fileName = videoFile.name;
   createOrUpdateVideo({
     url: `https://s3.us-east-2.amazonaws.com/${s3Bucket}/${fileName}`,
     title,
     user
-  }).then(function(dbVideo) {
+  }).then(function (dbVideo) {
     return addUserVideo(user, dbVideo._id);
-  }).then(function(dbUser) {
-    s3.putObject({
-      ACL: "public-read",
-      Body: data,
-      Bucket: s3Bucket,
-      Key: fileName
-    }, function (err) {
+  }).then(function (dbUser) {
+    putObjectInS3Storage(videoFile, err => {
       if (err) throw err;
       return fn(null, dbUser.videos);
     });
@@ -69,25 +88,24 @@ function upload(videoData, fn) {
 
 router.post("/upload", restrict, function (req, res) {
   const videoFile = req.files.file;
-  const videoData = {
-    title: req.body.title.trim(),
-    fileName: videoFile.name,
-    data: videoFile.data,
-    user: req.user._id
+  const title = req.body.title.trim();
+  const video = {
+    user: req.user._id,
+    title,
+    videoFile
   }
-  const formErrors = validateForm(videoData);
-  if (formErrors.length === 0) {
-    upload(videoData, (error, videos) => {
+  validateForm(video).then(() => {
+    upload(video, (error, videos) => {
       if (videos) {
         res.json(videos);
       } else {
         console.log(error);
-        res.status(500).end();
+        res.status(500).send(error);
       }
-    });
-  } else {
-    res.status(400).end();
-  }
+    })
+  }).catch(err => {
+    res.status(400).send(err);
+  });
 });
 
 module.exports = router;

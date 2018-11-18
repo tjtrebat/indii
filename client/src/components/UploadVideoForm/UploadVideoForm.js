@@ -9,7 +9,8 @@ class UploadVideoForm extends Component {
       title: "",
       selectedFile: "",
       error: "",
-      redirect: false
+      redirect: false,
+      loaded: 0
     };
     this.performFileUpload = this.performFileUpload.bind(this);
     this.addErrorMessage = this.addErrorMessage.bind(this);
@@ -44,8 +45,10 @@ class UploadVideoForm extends Component {
     }
   }
   performFileUpload() {
-    return API.upload(this.createFormData()).then(
-      this.sendRedirect).catch(err => {
+    const formData = this.createFormData();
+    return API.upload(formData, loaded => {
+      this.setState({ loaded });
+    }).then(this.sendRedirect).catch(err => {
         console.log(err);
         this.addErrorMessage(err);
       })
@@ -60,17 +63,17 @@ class UploadVideoForm extends Component {
   isFileFieldValid() {
     const { selectedFile } = this.state;
     const fileName = selectedFile.name;
-    if (!fileName || !fileName.match(/\.(mp4|MP4)$/)) {
-      return false;
-    }
-    return true;
-  }
-  isFormFieldBlank(fieldName) {
-    const value = this.state[fieldName];
-    if (typeof value === "undefined" || !value.trim()) {
+    if (fileName && fileName.match(/\.(mp4|MP4)$/)) {
       return true;
     }
     return false;
+  }
+  isFormFieldBlank(fieldName) {
+    const value = this.state[fieldName];
+    if (value && value.trim()) {
+      return false;
+    }
+    return true;
   }
   isFormFieldsValid() {
     return !this.isFormFieldBlank("title");
@@ -84,7 +87,7 @@ class UploadVideoForm extends Component {
     });
   }
   render() {
-    const { title, error, redirect } = this.state;
+    const { title, error, redirect, loaded } = this.state;
     if (redirect) {
       return <Redirect to="/profile" />;
     }
@@ -99,6 +102,7 @@ class UploadVideoForm extends Component {
           <button type="submit"
             onClick={this.handleFileUpload}>Upload</button>
         </form>
+        {loaded ? <span>Loaded: {Math.round(loaded, 2)}%</span> : ""}
       </div>
     );
   }

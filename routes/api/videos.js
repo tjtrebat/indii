@@ -24,22 +24,21 @@ router.get("/", function (req, res) {
   });
 });
 
-function getUserVideos(username, fn) {
-  db.User.findOne({
-    username
-  }).populate("videos").then(
-    function (dbUser) {
-      fn(null, dbUser.videos);
+function getVideo(id, fn) {
+  db.Video.findById(id).populate("user").then(
+    function (video) {
+      fn(null, video);
     }
   ).catch(err => {
     fn(new Error("An error occurred. Error: ", err));
-  })
+  });
 }
 
-router.get("/:username", function (req, res) {
-  getUserVideos(req.params.username, (error, videos) => {
-    if (videos) {
-      res.json({ videos });
+router.get("/:videoId", function (req, res) {
+  console.log(`Retrieving video: ${req.params.videoId}.`);
+  getVideo(req.params.videoId, (error, video) => {
+    if (video) {
+      res.json(video);
     } else {
       console.log(error);
       res.status(500).end();

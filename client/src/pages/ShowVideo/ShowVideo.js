@@ -1,5 +1,6 @@
 import React, { Component } from "react";
 import { Video } from "../../components/Video";
+import API from "../../utils/API";
 
 class ShowVideo extends Component {
   state = {
@@ -7,6 +8,9 @@ class ShowVideo extends Component {
   }
   componentDidMount() {
     console.log(`Retrieving Video: ${this.props.match.params.videoId}`);
+    API.getVideo(this.props.match.params.videoId).then(res => {
+      this.setState({ video: res.data });
+    })
   }
   render() {
     const { video } = this.state;

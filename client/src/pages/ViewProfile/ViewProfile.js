@@ -7,7 +7,7 @@ class ViewProfile extends Component {
     videos: []
   }
   componentDidMount() {
-    API.getVideos(this.props.match.params.username).then(res => {
+    API.getUserVideos(this.props.match.params.username).then(res => {
       this.setState({
         videos: res.data.videos
       });

@@ -19,10 +19,20 @@ export default {
     logout: function () {
         return axios.get("/api/users/logout");
     },
-    upload: function (data) {
-        return axios.post("/api/profile/upload", data);
+    upload: function (data, fn) {
+        return axios.post("/api/profile/upload", data, {
+            onUploadProgress: ProgressEvent => {
+                fn(ProgressEvent.loaded / ProgressEvent.total * 100);
+            }
+        });
     },
-    getVideos: function (username) {
-        return axios.get("/api/videos/" + (username ? username : ""));
+    getUserVideos: function (username) {
+        return axios.get(`/api/users/videos/${username}`);
+    },
+    getVideos: function () {
+        return axios.get("/api/videos");
+    },
+    getVideo: function (id) {
+        return axios.get(`/api/videos/${id}`);
     }
 };
