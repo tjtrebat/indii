@@ -45,10 +45,10 @@ class UploadVideoForm extends Component {
     }
   }
   performFileUpload() {
-    const formData = this.createFormData();
-    return API.upload(formData, loaded => {
-      this.setState({ loaded });
-    }).then(this.sendRedirect).catch(err => {
+    return API.uploadVideo(this.createFormData(),
+      loaded => {
+        this.setState({ loaded });
+      }).then(this.sendRedirect).catch(err => {
         console.log(err);
         this.addErrorMessage(err);
       })

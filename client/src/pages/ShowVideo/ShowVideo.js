@@ -7,7 +7,6 @@ class ShowVideo extends Component {
     video: null
   }
   componentDidMount() {
-    console.log(`Retrieving Video: ${this.props.match.params.videoId}`);
     API.getVideo(this.props.match.params.videoId).then(res => {
       this.setState({ video: res.data });
     })

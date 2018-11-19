@@ -35,7 +35,6 @@ function getVideo(id, fn) {
 }
 
 router.get("/:videoId", function (req, res) {
-  console.log(`Retrieving video: ${req.params.videoId}.`);
   getVideo(req.params.videoId, (error, video) => {
     if (video) {
       res.json(video);

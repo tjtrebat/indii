@@ -55,7 +55,7 @@ function validateForm(data) {
   });
 }
 
-function putObjectInS3Storage(videoFile, fn) {
+function putObjectInS3StorageBucket(videoFile, fn) {
   s3.putObject({
     ACL: "public-read",
     Body: videoFile.data,
@@ -77,7 +77,7 @@ function upload(video, fn) {
   }).then(function (dbVideo) {
     return addUserVideo(user, dbVideo._id);
   }).then(function (dbUser) {
-    putObjectInS3Storage(videoFile, err => {
+    putObjectInS3StorageBucket(videoFile, err => {
       if (err) throw err;
       return fn(null, dbUser.videos);
     });

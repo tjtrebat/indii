@@ -19,7 +19,7 @@ export default {
     logout: function () {
         return axios.get("/api/users/logout");
     },
-    upload: function (data, fn) {
+    uploadVideo: function (data, fn) {
         return axios.post("/api/profile/upload", data, {
             onUploadProgress: ProgressEvent => {
                 fn(ProgressEvent.loaded / ProgressEvent.total * 100);
