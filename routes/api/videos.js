@@ -85,7 +85,7 @@ router.get("/:videoId", function (req, res) {
       res.json(video);
     } else if (video) {
       const { contentRecognition } = video;
-      if (contentRecognition.jobSucceedAt) {
+      if (!contentRecognition || contentRecognition.jobSucceedAt) {
         res.status(404).end();
       } else {
         receiveContentModerationResponse(contentRecognition.jobId,
