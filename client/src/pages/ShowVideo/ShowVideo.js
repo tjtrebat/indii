@@ -14,7 +14,7 @@ class ShowVideo extends Component {
   render() {
     const { video } = this.state;
     if (!video) {
-      return <span>Video does not exist.</span>;
+      return <span>Video is unavailable.</span>;
     }
     return (
       <div>

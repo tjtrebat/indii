@@ -16,6 +16,11 @@ const VideoSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "User"
   },
+  contentRecognition: {
+    type: Schema.Types.ObjectId,
+    ref: "VideoContentRecognition"
+  },
+  isContentEligible: { type: Boolean },
   createdAt: {
     type: Date,
     default: Date.now
