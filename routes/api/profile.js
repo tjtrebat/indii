@@ -119,10 +119,6 @@ function createVideoContentRecognition(contentRecognition) {
   return db.VideoContentRecognition.create(contentRecognition);
 }
 
-function saveVideoContentRecognition(contentRecognition) {
-  return contentRecognition.save();
-}
-
 function saveVideo(video) {
   return video.save();
 }
@@ -140,33 +136,32 @@ router.post("/upload", restrict, function (req, res) {
   validateForm(video).then(() => {
     upload(video, (err, videos) => {
       if (err) throw err;
-      const dbVideo = videos.filter(v => v.url === url)[0];
-      const { contentRecognition } = dbVideo;
       const data = {
         jobTag: uuidv1(),
         clientRequestToken: uuidv1()
       };
-      sendContentModerationRequest({
-        fileName: videoFile.name,
-        ...data
-      }, (error, jobId) => {
-        if (error) throw error;
-        if (contentRecognition) {
-          contentRecognition.jobId = jobId;
-          contentRecognition.jobTag = data.jobTag;
-          contentRecognition.clientRequestToken = data.clientRequestToken;
-          contentRecognition.labels = [];
-          contentRecognition.receivedLabelsAt = null;
-          saveVideoContentRecognition(contentRecognition).then(
-            () => res.json(videos));
-        } else {
-          createVideoContentRecognition({ jobId, ...data }).then(
-            dbVideoContentRecognition => {
-              dbVideo.contentRecognition = dbVideoContentRecognition._id;
-              saveVideo(dbVideo).then(() => res.json(videos));
+      const dbVideo = videos.filter(v => v.url === url)[0];
+      sendContentModerationRequest({ fileName: videoFile.name, ...data },
+        (error, jobId) => {
+          if (error) throw error;
+          if (dbVideo.contentRecognition) {
+            dbVideo.contentRecognition.jobId = jobId;
+            dbVideo.contentRecognition.jobTag = data.jobTag;
+            dbVideo.contentRecognition.clientRequestToken = data.clientRequestToken;
+            dbVideo.contentRecognition.labels = [];
+            dbVideo.contentRecognition.receivedLabelsAt = null;
+            dbVideo.contentRecognition.save(function (saveError) {
+              if (saveError) throw saveError;
+              res.json(videos);
             });
-        }
-      });
+          } else {
+            createVideoContentRecognition({ jobId, ...data }).then(
+              dbVideoContentRecognition => {
+                dbVideo.contentRecognition = dbVideoContentRecognition._id;
+                saveVideo(dbVideo).then(() => res.json(videos));
+              });
+          }
+        });
     });
   }).catch(err => {
     console.log(err);

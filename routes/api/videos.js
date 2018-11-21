@@ -37,15 +37,7 @@ function createVideoContentRecognitionLabels(labels) {
   return db.VideoContentRecognitionLabel.create(labels);
 }
 
-function saveVideoContentRecognition(contentRecognition, fn) {
-  contentRecognition.save(function (err) {
-    if (err) return fn(new Error("An error occurred. Error: ", err));
-    fn(null, contentRecognition);
-  });
-}
-
 function requestModerationLabels(jobId, fn) {
-  console.log(`Requesting content moderation labels for JobId: ${jobId}.`);
   rekognition.getContentModeration({
     JobId: jobId,
     MaxResults: 1000,
@@ -56,7 +48,6 @@ function requestModerationLabels(jobId, fn) {
       fn(new Error("An error occurred. Error: ", err));
     } else {
       const { JobStatus: jobStatus } = data;
-      console.log("JobStatus: ", jobStatus);
       if (jobStatus === "SUCCEEDED") {
         const moderationLabels = [];
         data.ModerationLabels.forEach(el => {
@@ -70,12 +61,25 @@ function requestModerationLabels(jobId, fn) {
             parentName
           });
         });
-        fn(null, { moderationLabels });
+        fn(null, moderationLabels);
       } else {
-        fn(new Error("An error occurred retrieving the labels."));
+        fn(new Error("JobStatus: ", jobStatus));
       }
     }
   });
+}
+
+function requestLabelsAndSaveContentRecognition(contentRecognition) {
+  requestModerationLabels(contentRecognition.jobId,
+    (error, data) => {
+      if (error) throw error;
+      return createVideoContentRecognitionLabels(data).then(
+        dbLabels => {
+          contentRecognition.labels = dbLabels;
+          contentRecognition.receivedLabelsAt = Date.now();
+          return contentRecognition.save();
+        });
+    });
 }
 
 router.get("/:videoId", function (req, res) {
@@ -87,39 +91,20 @@ router.get("/:videoId", function (req, res) {
           db.VideoContentRecognitionLabel.populate(video, {
             path: "contentRecognition.labels"
           }, (err, dbVideo) => {
-            if (err) return res.status(404).end();
+            if (err) throw err;
             if (dbVideo.contentRecognition.hasExplicitLabels()) {
-              console.log("Video is moderated for explicit content.");
               res.status(404).end();
             } else {
               res.json(video);
             }
           });
         } else {
-          requestModerationLabels(contentRecognition.jobId,
-            (error, data) => {
-              if (data) {
-                if (data.moderationLabels) {
-                  createVideoContentRecognitionLabels(data.moderationLabels).then(
-                    dbLabels => {
-                      contentRecognition.labels = dbLabels;
-                      contentRecognition.receivedLabelsAt = Date.now();
-                      saveVideoContentRecognition(contentRecognition,
-                        (err, dbContentRecognition) => {
-                          if (err) throw err;
-                          if (dbContentRecognition.hasExplicitLabels()) {
-                            res.status(404).end();
-                          } else {
-                            res.json(video);
-                          }
-                        });
-                    });
-                } else {
-                  res.json(video);
-                }
-              } else {
-                console.log(error);
+          requestLabelsAndSaveContentRecognition(contentRecognition).then(
+            dbContentRecognition => {
+              if (dbContentRecognition.hasExplicitLabels()) {
                 res.status(404).end();
+              } else {
+                res.json(video);
               }
             });
         }
