@@ -3,14 +3,14 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const VideoSchema = new Schema({
-  title: {
-    type: String,
-    required: true
-  },
   url: {
     type: String,
     required: true,
     unique: true
+  },
+  title: {
+    type: String,
+    required: true
   },
   user: {
     type: Schema.Types.ObjectId,
@@ -20,7 +20,6 @@ const VideoSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "VideoContentRecognition"
   },
-  isContentEligible: { type: Boolean },
   createdAt: {
     type: Date,
     default: Date.now

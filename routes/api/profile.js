@@ -6,7 +6,9 @@ const db = require("../../models");
 const { s3Bucket } = require("../../keys").amazon;
 
 aws.config.region = "us-east-1";
+
 const s3 = new aws.S3();
+
 const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
 
 function restrict(req, res, next) {
@@ -65,10 +67,9 @@ function putObjectInS3StorageBucket(videoFile, fn) {
   });
 }
 
-function sendContentModerationRequest(fileName, fn) {
-  console.log(`Sending content moderation for fileName: ${fileName}.`);
-  const clientRequestToken = uuidv1();
-  const jobTag = uuidv1();
+function sendContentModerationRequest(reqParams, fn) {
+  const { fileName, clientRequestToken, jobTag } = reqParams;
+  console.log(`Sending content moderation request for '${fileName}'.`);
   const params = {
     Video: {
       S3Object: {
@@ -87,7 +88,7 @@ function sendContentModerationRequest(fileName, fn) {
   rekognition.startContentModeration(params, function (err, data) {
     if (data) {
       console.log(`Received JobId '${data.JobId}' for the request ${fileName}.`);
-      fn(null, { jobId: data.JobId, clientRequestToken, jobTag });
+      fn(null, data.JobId);
     } else {
       console.log(err, err.stack);
       fn(new Error("An error occurred. Error: ", err));
@@ -115,40 +116,15 @@ function upload(video, fn) {
 }
 
 function createVideoContentRecognition(contentRecognition) {
-  const { jobId, clientRequestToken, jobTag } = contentRecognition;
-  return db.VideoContentRecognition.create({
-    jobId,
-    clientRequestToken,
-    jobTag
-  });
+  return db.VideoContentRecognition.create(contentRecognition);
 }
 
-function createOrUpdateVideoContentRecognition(video, data, fn) {
-  const { contentRecognition } = video;
-  if (contentRecognition) {
-    contentRecognition.jobId = data.jobId;
-    contentRecognition.jobTag = data.jobTag;
-    contentRecognition.clientRequestToken = data.clientRequestToken;
-    contentRecognition.jobSucceedAt = null;
-    contentRecognition.labels = [];
-    video.isContentVerified = false;
-    video.save(function (err) {
-      if (err) return fn(new Error("An error occurred. Error: ", err));
-      fn(null, video);
-    });
-  } else {
-    createVideoContentRecognition(data).then(
-      dbVideoContentRecognition => {
-        video.contentRecognition = dbVideoContentRecognition._id;
-        video.save(function (error) {
-          if (error) throw error;
-          fn(null, video);
-        });
-      }).catch(err => {
-      console.log(err);
-      fn(new Error("An error occurred. Error: ", err));
-    });
-  }
+function saveVideoContentRecognition(contentRecognition) {
+  return contentRecognition.save();
+}
+
+function saveVideo(video) {
+  return video.save();
 }
 
 router.post("/upload", restrict, function (req, res) {
@@ -165,15 +141,32 @@ router.post("/upload", restrict, function (req, res) {
     upload(video, (err, videos) => {
       if (err) throw err;
       const dbVideo = videos.filter(v => v.url === url)[0];
-      sendContentModerationRequest(videoFile.name,
-        (error, data) => {
-          if (error) throw error;
-          createOrUpdateVideoContentRecognition(dbVideo, data,
-            updateErr => {
-              if (updateErr) throw updateErr;
-              return res.status(200).end();
+      const { contentRecognition } = dbVideo;
+      const data = {
+        jobTag: uuidv1(),
+        clientRequestToken: uuidv1()
+      };
+      sendContentModerationRequest({
+        fileName: videoFile.name,
+        ...data
+      }, (error, jobId) => {
+        if (error) throw error;
+        if (contentRecognition) {
+          contentRecognition.jobId = jobId;
+          contentRecognition.jobTag = data.jobTag;
+          contentRecognition.clientRequestToken = data.clientRequestToken;
+          contentRecognition.labels = [];
+          contentRecognition.receivedLabelsAt = null;
+          saveVideoContentRecognition(contentRecognition).then(
+            () => res.json(videos));
+        } else {
+          createVideoContentRecognition({ jobId, ...data }).then(
+            dbVideoContentRecognition => {
+              dbVideo.contentRecognition = dbVideoContentRecognition._id;
+              saveVideo(dbVideo).then(() => res.json(videos));
             });
-        });
+        }
+      });
     });
   }).catch(err => {
     console.log(err);

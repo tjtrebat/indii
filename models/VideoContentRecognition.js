@@ -27,10 +27,10 @@ const VideoContentRecognitionSchema = new Schema({
     type: Date,
     default: Date.now
   },
-  jobSucceedAt: { type: Date }
+  receivedLabelsAt: { type: Date }
 });
 
-VideoContentRecognitionSchema.methods.isContentExplicit = function () {
+VideoContentRecognitionSchema.methods.hasExplicitLabels = function () {
   const topLevelLabels = {};
   const topLevelCategories = [
     "Explicit Nudity",
@@ -43,10 +43,16 @@ VideoContentRecognitionSchema.methods.isContentExplicit = function () {
       numChildren: 0
     }
   });
-  if (this.labels && this.labels.length) {
+  if (this.labels) {
     const moderationLabels = {};
     this.labels.forEach(label => {
       const { name, confidence, parentName } = label;
+      if (name in topLevelLabels) {
+        topLevelLabels[name].count += 1;
+        topLevelLabels[name].totalConfidence += confidence;
+      } else if (parentName in topLevelLabels) {
+        topLevelLabels[parentName].numChildren += 1;
+      }
       if (name in moderationLabels) {
         moderationLabels[name].count += 1;
         moderationLabels[name].totalConfidence += confidence
@@ -58,21 +64,10 @@ VideoContentRecognitionSchema.methods.isContentExplicit = function () {
         }
       }
     });
-    Object.entries(moderationLabels).forEach(
-      ([name,
-        { count, totalConfidence, parentName }]) => {
-        console.log(name);
-        if (name in topLevelLabels) {
-          topLevelLabels[name].count = count;
-          topLevelLabels[name].totalConfidence = totalConfidence;
-        } else if (parentName in topLevelLabels) {
-          topLevelLabels[parentName].numChildren += 1;
-        }
-      });
   }
   const explicitLabelCount = topLevelLabels[topLevelCategories[0]].count
     + topLevelLabels[topLevelCategories[0]].numChildren;
-  console.log("No. Explicit Labels: ", explicitLabelCount);
+  console.log(`No. of Explicit Labels is ${explicitLabelCount}.`);
   return explicitLabelCount > 0;
 }
 

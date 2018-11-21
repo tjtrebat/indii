@@ -9,7 +9,7 @@ class Home extends Component {
     componentDidMount() {
         API.getVideos().then(res => {
             this.setState({
-                videos: res.data.videos
+                videos: res.data
             });
         });
     }
