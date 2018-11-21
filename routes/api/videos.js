@@ -99,8 +99,9 @@ router.get("/:videoId", function (req, res) {
             }
           });
         } else {
-          requestLabelsAndSaveContentRecognition(contentRecognition).then(
-            dbContentRecognition => {
+          requestLabelsAndSaveContentRecognition(contentRecognition,
+            (err, dbContentRecognition) => {
+              if (err) throw err;
               if (dbContentRecognition.hasExplicitLabels()) {
                 res.status(404).end();
               } else {

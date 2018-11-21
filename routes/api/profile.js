@@ -11,13 +11,6 @@ const s3 = new aws.S3();
 
 const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
 
-function restrict(req, res, next) {
-  if (req.user) {
-    return next();
-  }
-  res.status(401).end();
-}
-
 function createOrUpdateVideo(video) {
   const { url, title, user } = video;
   return db.Video.findOneAndUpdate({ url }, {
@@ -31,6 +24,10 @@ function addUserVideo(userId, videoId) {
   return db.User.findByIdAndUpdate(userId,
     { $addToSet: { videos: videoId } },
     { new: true }).populate("videos");
+}
+
+function createVideoContentRecognition(contentRecognition) {
+  return db.VideoContentRecognition.create(contentRecognition);
 }
 
 function isValidMp4File(videoFile) {
@@ -55,6 +52,13 @@ function validateForm(data) {
   });
 }
 
+function restrict(req, res, next) {
+  if (req.user) {
+    return next();
+  }
+  res.status(401).end();
+}
+
 function putObjectInS3StorageBucket(videoFile, fn) {
   s3.putObject({
     ACL: "public-read",
@@ -64,35 +68,6 @@ function putObjectInS3StorageBucket(videoFile, fn) {
   }, function (err) {
     if (err) console.log(err, err.stack);
     fn(err);
-  });
-}
-
-function sendContentModerationRequest(reqParams, fn) {
-  const { fileName, clientRequestToken, jobTag } = reqParams;
-  console.log(`Sending content moderation request for '${fileName}'.`);
-  const params = {
-    Video: {
-      S3Object: {
-        Bucket: s3Bucket,
-        Name: fileName
-      }
-    },
-    ClientRequestToken: clientRequestToken,
-    JobTag: jobTag,
-    MinConfidence: 50.0,
-    NotificationChannel: {
-      RoleArn: "arn:aws:iam::772742774276:role/rekognition_role",
-      SNSTopicArn: "arn:aws:sns:us-east-1:772742774276:AmazonRekognitionTopic"
-    }
-  }
-  rekognition.startContentModeration(params, function (err, data) {
-    if (data) {
-      console.log(`Received JobId '${data.JobId}' for the request ${fileName}.`);
-      fn(null, data.JobId);
-    } else {
-      console.log(err, err.stack);
-      fn(new Error("An error occurred. Error: ", err));
-    }
   });
 }
 
@@ -115,12 +90,62 @@ function upload(video, fn) {
   });
 }
 
-function createVideoContentRecognition(contentRecognition) {
-  return db.VideoContentRecognition.create(contentRecognition);
+function sendContentModerationRequest(fileName, contentRecognition, fn) {
+  console.log(`Sending request for content moderation on '${fileName}'.`);
+  const params = {
+    Video: {
+      S3Object: {
+        Bucket: s3Bucket,
+        Name: fileName
+      }
+    },
+    ClientRequestToken: contentRecognition.clientRequestToken,
+    JobTag: contentRecognition.jobTag,
+    MinConfidence: 50.0,
+    NotificationChannel: {
+      RoleArn: "arn:aws:iam::772742774276:role/rekognition_role",
+      SNSTopicArn: "arn:aws:sns:us-east-1:772742774276:AmazonRekognitionTopic"
+    }
+  }
+  rekognition.startContentModeration(params, function (err, data) {
+    if (data) {
+      console.log(`Received JobId '${data.JobId}' for '${fileName}'.`);
+      fn(null, data);
+    } else {
+      console.log(err, err.stack);
+      fn(new Error("An error occurred. Error: ", err));
+    }
+  });
 }
 
-function saveVideo(video) {
-  return video.save();
+function sendRequestAndUpdateContentRecognition(fileName, dbVideo, fn) {
+  const contentRecognition = {};
+  contentRecognition.labels = [];
+  contentRecognition.jobTag = uuidv1();
+  contentRecognition.receivedLabelsAt = null;
+  contentRecognition.clientRequestToken = uuidv1();
+  sendContentModerationRequest(fileName, contentRecognition,
+    (err, data) => {
+      if (err) return fn(err);
+      contentRecognition.jobId = data.JobId;
+      if (dbVideo.contentRecognition) {
+        db.VideoContentRecognition.findByIdAndUpdate(dbVideo.contentRecognition._id, contentRecognition,
+          (error, dbContentRecognition) => {
+            if (error) return fn(error);
+            fn(null, dbContentRecognition);
+          });
+      } else {
+        createVideoContentRecognition(contentRecognition).then(
+          dbContentRecognition => {
+            console.log("Updating dbVideo.");
+            dbVideo.contentRecognition = dbContentRecognition._id;
+            dbVideo.save(function (error) {
+              if (error) return fn(error);
+              fn(null, dbContentRecognition);
+            });
+          });
+      }
+    });
 }
 
 router.post("/upload", restrict, function (req, res) {
@@ -136,32 +161,11 @@ router.post("/upload", restrict, function (req, res) {
   validateForm(video).then(() => {
     upload(video, (err, videos) => {
       if (err) throw err;
-      const data = {
-        jobTag: uuidv1(),
-        clientRequestToken: uuidv1()
-      };
       const dbVideo = videos.filter(v => v.url === url)[0];
-      sendContentModerationRequest({ fileName: videoFile.name, ...data },
-        (error, jobId) => {
-          if (error) throw error;
-          if (dbVideo.contentRecognition) {
-            dbVideo.contentRecognition.jobId = jobId;
-            dbVideo.contentRecognition.jobTag = data.jobTag;
-            dbVideo.contentRecognition.clientRequestToken = data.clientRequestToken;
-            dbVideo.contentRecognition.labels = [];
-            dbVideo.contentRecognition.receivedLabelsAt = null;
-            dbVideo.contentRecognition.save(function (saveError) {
-              if (saveError) throw saveError;
-              res.json(videos);
-            });
-          } else {
-            createVideoContentRecognition({ jobId, ...data }).then(
-              dbVideoContentRecognition => {
-                dbVideo.contentRecognition = dbVideoContentRecognition._id;
-                saveVideo(dbVideo).then(() => res.json(videos));
-              });
-          }
-        });
+      sendRequestAndUpdateContentRecognition(videoFile.name, dbVideo, error => {
+        if (error) throw error;
+        res.json(videos);
+      });
     });
   }).catch(err => {
     console.log(err);
