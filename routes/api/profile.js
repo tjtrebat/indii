@@ -137,7 +137,6 @@ function sendRequestAndUpdateContentRecognition(fileName, dbVideo, fn) {
       } else {
         createVideoContentRecognition(contentRecognition).then(
           dbContentRecognition => {
-            console.log("Updating dbVideo.");
             dbVideo.contentRecognition = dbContentRecognition._id;
             dbVideo.save(function (error) {
               if (error) return fn(error);
