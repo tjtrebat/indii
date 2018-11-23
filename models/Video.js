@@ -3,10 +3,14 @@ const mongoose = require("mongoose");
 const { Schema } = mongoose;
 
 const VideoSchema = new Schema({
-  url: {
+  fileName: {
     type: String,
     required: true,
     unique: true
+  },
+  s3Bucket: {
+    type: String,
+    required: true
   },
   title: {
     type: String,

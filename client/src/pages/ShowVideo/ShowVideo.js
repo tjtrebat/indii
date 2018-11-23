@@ -10,7 +10,7 @@ class ShowVideo extends Component {
     API.getVideo(this.props.match.params.videoId).then(
       res => {
         this.setState({ video: res.data });
-      })
+      }).catch(err => console.log(err));
   }
   render() {
     const { video } = this.state;
@@ -21,7 +21,8 @@ class ShowVideo extends Component {
       <div>
         Title: {video.title}<br />
         Uploaded: {video.createdAt}<br />
-        <Video url={video.url} width="320" height="240" controls />
+        <Video url={`https://s3.amazonaws.com/${video.s3Bucket}/${video.fileName}`}
+          width="320" height="240" controls />
       </div>
     );
   }

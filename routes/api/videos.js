@@ -2,10 +2,6 @@ const router = require("express").Router();
 const aws = require("aws-sdk");
 const db = require("../../models");
 
-aws.config.region = "us-east-1";
-
-const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
-
 function getVideos(fn) {
   db.Video.find({}).sort({
     createdAt: -1
@@ -18,17 +14,6 @@ function getVideos(fn) {
   });
 }
 
-router.get("/", function (req, res) {
-  getVideos((error, videos) => {
-    if (videos) {
-      res.json(videos);
-    } else {
-      console.log(error);
-      res.status(500).end();
-    }
-  });
-});
-
 function getVideo(id) {
   return db.Video.findById(id).populate("user contentRecognition");
 }
@@ -36,6 +21,11 @@ function getVideo(id) {
 function createVideoContentRecognitionLabels(labels) {
   return db.VideoContentRecognitionLabel.create(labels);
 }
+
+
+aws.config.region = "us-east-1";
+
+const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
 
 function requestModerationLabels(jobId, fn) {
   rekognition.getContentModeration({
@@ -46,41 +36,52 @@ function requestModerationLabels(jobId, fn) {
     if (err) {
       console.log(err, err.stack);
       fn(new Error("An error occurred. Error: ", err));
-    } else {
-      const { JobStatus: jobStatus } = data;
-      if (jobStatus === "SUCCEEDED") {
-        const moderationLabels = [];
-        data.ModerationLabels.forEach(el => {
-          const { ModerationLabel: moderationLabel } = el;
-          const { Name: name, Confidence: confidence,
-            Timestamp: timestamp, ParentName: parentName } = moderationLabel;
-          moderationLabels.push({
-            name,
-            confidence,
-            timestamp,
-            parentName
-          });
+    } else if (data.JobStatus === "SUCCEEDED") {
+      const moderationLabels = [];
+      data.ModerationLabels.forEach(el => {
+        const { ModerationLabel: moderationLabel } = el;
+        const { Name: name, Confidence: confidence,
+          Timestamp: timestamp, ParentName: parentName } = moderationLabel;
+        moderationLabels.push({
+          name,
+          timestamp,
+          confidence,
+          parentName
         });
-        fn(null, moderationLabels);
-      } else {
-        fn(new Error("JobStatus: ", jobStatus));
-      }
+      });
+      fn(null, moderationLabels);
+    } else {
+      fn(new Error(`An error occurred. JobStatus: ${data.JobStatus}`));
     }
   });
 }
 
-function requestLabelsAndSaveContentRecognition(contentRecognition) {
+function requestLabelsAndSaveContentRecognition(contentRecognition, fn) {
   requestModerationLabels(contentRecognition.jobId,
-    (error, data) => {
-      if (error) throw error;
-      return createVideoContentRecognitionLabels(data).then(
+    (err, data) => {
+      if (err) return fn(err);
+      createVideoContentRecognitionLabels(data).then(
         dbLabels => {
           contentRecognition.labels = dbLabels;
           contentRecognition.receivedLabelsAt = Date.now();
-          return contentRecognition.save();
+          contentRecognition.save(function (error) {
+            if (error) return fn(error);
+            fn(null, contentRecognition);
+          });
         });
     });
 }
+
+router.get("/", function (req, res) {
+  getVideos((error, videos) => {
+    if (videos) {
+      res.json(videos);
+    } else {
+      console.log(error);
+      res.status(500).end();
+    }
+  });
+});
 
 router.get("/:videoId", function (req, res) {
   getVideo(req.params.videoId).then(video => {
@@ -101,13 +102,18 @@ router.get("/:videoId", function (req, res) {
         } else {
           requestLabelsAndSaveContentRecognition(contentRecognition,
             (err, dbContentRecognition) => {
-              if (err) throw err;
-              if (dbContentRecognition.hasExplicitLabels()) {
-                res.status(404).end();
+              if (dbContentRecognition) {
+                if (dbContentRecognition.hasExplicitLabels()) {
+                  res.status(404).end();
+                } else {
+                  res.json(video);
+                }
               } else {
-                res.json(video);
+                console.log(err);
+                res.status(404).end();
               }
-            });
+            }
+          );
         }
       } else {
         res.status(404).end();

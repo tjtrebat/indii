@@ -1,22 +1,52 @@
 require("dotenv").config();
+
 const router = require("express").Router();
 const aws = require("aws-sdk");
 const uuidv1 = require("uuid/v1");
 const db = require("../../models");
-const { s3Bucket } = require("../../keys").amazon;
+const { amazon } = require("../../keys");
 
-aws.config.region = "us-east-1";
+function restrict(req, res, next) {
+  if (req.user) {
+    return next();
+  }
+  res.status(401).end();
+}
 
-const s3 = new aws.S3();
+function isValidMp4File(videoFile) {
+  const { name, mimetype } = videoFile;
+  return name.match(/\.(mp4|MP4)$/u) && mimetype === "video/mp4";
+}
 
-const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
+function isBlank(value) {
+  return !(value && value.trim());
+}
+
+function getFormErrors(data) {
+  const { title, videoFile } = data;
+  const formErrors = [];
+  if (isBlank(title)) {
+    formErrors.push({
+      statusCode: 400,
+      error: new Error("Title must not be empty.")
+    });
+  }
+  if (!isValidMp4File(videoFile)) {
+    formErrors.push({
+      statusCode: 415,
+      error: new Error("Invalid (.mp4) file.")
+    });
+  }
+  return formErrors;
+}
 
 function createOrUpdateVideo(video) {
-  const { url, title, user } = video;
-  return db.Video.findOneAndUpdate({ url }, {
-    url,
+  const { user, fileName, s3Bucket, title } = video;
+  return db.Video.findOneAndUpdate({ fileName }, {
+    user,
     title,
-    user
+    fileName,
+    s3Bucket
   }, { upsert: true, new: true, setDefaultsOnInsert: true });
 }
 
@@ -30,41 +60,16 @@ function createVideoContentRecognition(contentRecognition) {
   return db.VideoContentRecognition.create(contentRecognition);
 }
 
-function isValidMp4File(videoFile) {
-  const { name, mimetype } = videoFile;
-  return name.match(/\.(mp4|MP4)$/u) && mimetype === "video/mp4";
-}
+aws.config.region = "us-east-1";
 
-function isBlank(value) {
-  return !(value && value.trim());
-}
-
-function validateForm(data) {
-  const { title, videoFile } = data;
-  return new Promise((resolve, reject) => {
-    if (isBlank(title)) {
-      reject(new Error("Title must not be empty."));
-    } else if (!isValidMp4File(videoFile)) {
-      reject(new Error("Invalid (.mp4) file."));
-    } else {
-      resolve();
-    }
-  });
-}
-
-function restrict(req, res, next) {
-  if (req.user) {
-    return next();
-  }
-  res.status(401).end();
-}
+const s3 = new aws.S3();
 
 function putObjectInS3StorageBucket(videoFile, fn) {
   s3.putObject({
     ACL: "public-read",
+    Key: videoFile.name,
     Body: videoFile.data,
-    Bucket: s3Bucket,
-    Key: videoFile.name
+    Bucket: amazon.s3Bucket
   }, function (err) {
     if (err) console.log(err, err.stack);
     fn(err);
@@ -72,30 +77,34 @@ function putObjectInS3StorageBucket(videoFile, fn) {
 }
 
 function upload(video, fn) {
-  const { user, title, videoFile, url } = video;
+  const { user, title, videoFile } = video;
   createOrUpdateVideo({
-    url,
+    user,
     title,
-    user
+    fileName: videoFile.name,
+    s3Bucket: amazon.s3Bucket
   }).then(function (dbVideo) {
     return addUserVideo(user, dbVideo._id);
   }).then(function (dbUser) {
-    putObjectInS3StorageBucket(videoFile, s3Error => {
-      if (s3Error) throw s3Error;
-      return fn(null, dbUser.videos);
-    });
+    putObjectInS3StorageBucket(videoFile,
+      err => {
+        if (err) throw err;
+        return fn(null, dbUser.videos);
+      });
   }).catch(function (err) {
     console.log(err);
     return fn(new Error("An error occurred. Error: ", err));
   });
 }
 
+const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
+
 function sendContentModerationRequest(fileName, contentRecognition, fn) {
   console.log(`Sending request for content moderation on '${fileName}'.`);
   const params = {
     Video: {
       S3Object: {
-        Bucket: s3Bucket,
+        Bucket: amazon.s3Bucket,
         Name: fileName
       }
     },
@@ -103,8 +112,8 @@ function sendContentModerationRequest(fileName, contentRecognition, fn) {
     JobTag: contentRecognition.jobTag,
     MinConfidence: 50.0,
     NotificationChannel: {
-      RoleArn: "arn:aws:iam::772742774276:role/rekognition_role",
-      SNSTopicArn: "arn:aws:sns:us-east-1:772742774276:AmazonRekognitionTopic"
+      RoleArn: amazon.rekognitionRoleArn,
+      SNSTopicArn: amazon.rekognitionTopicArn
     }
   }
   rekognition.startContentModeration(params, function (err, data) {
@@ -118,18 +127,21 @@ function sendContentModerationRequest(fileName, contentRecognition, fn) {
   });
 }
 
-function sendRequestAndUpdateContentRecognition(fileName, dbVideo, fn) {
-  const contentRecognition = {};
-  contentRecognition.labels = [];
-  contentRecognition.jobTag = uuidv1();
-  contentRecognition.receivedLabelsAt = null;
-  contentRecognition.clientRequestToken = uuidv1();
-  sendContentModerationRequest(fileName, contentRecognition,
+function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
+  const contentRecognition = {
+    labels: [],
+    jobTag: uuidv1(),
+    receivedLabelsAt: null,
+    clientRequestToken: uuidv1()
+  };
+  sendContentModerationRequest(dbVideo.fileName, contentRecognition,
     (err, data) => {
       if (err) return fn(err);
       contentRecognition.jobId = data.JobId;
       if (dbVideo.contentRecognition) {
-        db.VideoContentRecognition.findByIdAndUpdate(dbVideo.contentRecognition._id, contentRecognition,
+        db.VideoContentRecognition.findByIdAndUpdate(
+          dbVideo.contentRecognition._id,
+          contentRecognition,
           (error, dbContentRecognition) => {
             if (error) return fn(error);
             fn(null, dbContentRecognition);
@@ -148,28 +160,33 @@ function sendRequestAndUpdateContentRecognition(fileName, dbVideo, fn) {
 }
 
 router.post("/upload", restrict, function (req, res) {
+  const user = req.user;
   const videoFile = req.files.file;
   const title = req.body.title.trim();
-  const url = `https://s3.amazonaws.com/${s3Bucket}/${videoFile.name}`;
-  const video = {
-    user: req.user._id,
-    title,
-    videoFile,
-    url
-  }
-  validateForm(video).then(() => {
+  videoFile.name = `${user.username}_${videoFile.name}`;
+  const video = { user, title, videoFile };
+  const formErrors = getFormErrors(video);
+  if (formErrors.length) {
+    res.status(formErrors[0].statusCode).end();
+  } else {
     upload(video, (err, videos) => {
-      if (err) throw err;
-      const dbVideo = videos.filter(v => v.url === url)[0];
-      sendRequestAndUpdateContentRecognition(videoFile.name, dbVideo, error => {
-        if (error) throw error;
-        res.json(videos);
-      });
+      if (videos) {
+        const dbVideo = videos.filter(v => v.fileName === videoFile.name)[0];
+        sendRequestAndUpdateContentRecognition(dbVideo,
+          (error, dbContentRecognition) => {
+            if (dbContentRecognition) {
+              res.json(videos)
+            } else {
+              console.log(error);
+              return res.status(500).end();
+            }
+          });
+      } else {
+        console.log(err);
+        return res.status(500).end();
+      }
     });
-  }).catch(err => {
-    console.log(err);
-    res.status(500).end();
-  });
+  }
 });
 
 module.exports = router;
