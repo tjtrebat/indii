@@ -67,13 +67,15 @@ VideoContentRecognitionSchema.methods.hasExplicitLabels = function () {
   }
   let totalLabels = 0;
   topLevelCategories.forEach(category => {
-    const labelCount = topLevelLabels[category].count + topLevelLabels[category].numChildren;
+    const labelCount = topLevelLabels[category].count
+      + topLevelLabels[category].numChildren;
     console.log(`No. of labels with the term '${category}': ${labelCount}.`);
     totalLabels += labelCount;
   });
   return totalLabels > 0;
 }
 
-const VideoContentRecognition = mongoose.model("VideoContentRecognition", VideoContentRecognitionSchema);
+const VideoContentRecognition = mongoose.model("VideoContentRecognition",
+  VideoContentRecognitionSchema);
 
 module.exports = VideoContentRecognition;

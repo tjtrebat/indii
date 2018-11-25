@@ -57,27 +57,28 @@ function requestModerationLabels(jobId, fn) {
 }
 
 function requestLabelsAndSaveContentRecognition(contentRecognition, fn) {
-  requestModerationLabels(contentRecognition.jobId,
-    (err, data) => {
-      if (err) return fn(err);
-      createVideoContentRecognitionLabels(data).then(
-        dbLabels => {
-          contentRecognition.labels = dbLabels;
-          contentRecognition.receivedLabelsAt = Date.now();
-          contentRecognition.save(function (error) {
-            if (error) return fn(error);
-            fn(null, contentRecognition);
-          });
+  const { jobId } = contentRecognition;
+  requestModerationLabels(jobId, (err, data) => {
+    if (err) return fn(err);
+    console.log(`Received labels (${data.length}) for JobId ${jobId}.`);
+    createVideoContentRecognitionLabels(data).then(
+      dbLabels => {
+        contentRecognition.labels = dbLabels;
+        contentRecognition.receivedLabelsAt = Date.now();
+        contentRecognition.save(function (error) {
+          if (error) return fn(error);
+          fn(null, contentRecognition);
         });
-    });
+      });
+  });
 }
 
 router.get("/", function (req, res) {
-  getVideos((error, videos) => {
+  getVideos((err, videos) => {
     if (videos) {
       res.json(videos);
     } else {
-      console.log(error);
+      console.log(err);
       res.status(500).end();
     }
   });

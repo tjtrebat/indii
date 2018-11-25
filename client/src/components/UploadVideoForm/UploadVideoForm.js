@@ -8,7 +8,7 @@ class UploadVideoForm extends Component {
     this.state = {
       title: "",
       selectedFile: "",
-      error: "",
+      errorMsg: "",
       redirect: false,
       loaded: 0
     };
@@ -29,19 +29,12 @@ class UploadVideoForm extends Component {
   }
   handleFileUpload = event => {
     event.preventDefault();
-    const formErrors = this.validateForm();
-    if (formErrors) {
-      this.addErrorMessage(formErrors[0]);
+    if (!this.isFormFieldsValid()) {
+      this.addErrorMessage("Title must not be empty.");
+    } else if (!this.isFileFieldValid()) {
+      this.addErrorMessage("Invalid file format.");
     } else {
       this.performFileUpload();
-    }
-  }
-  validateForm() {
-    const formErrors = [];
-    if (!this.isFormFieldsValid()) {
-      formErrors.push(new Error("Title must not be empty."));
-    } else if (!this.isFileFieldValid()) {
-      formErrors.push(new Error("Invalid file format."));
     }
   }
   performFileUpload() {
@@ -50,7 +43,7 @@ class UploadVideoForm extends Component {
         this.setState({ loaded });
       }).then(this.sendRedirect).catch(err => {
         console.log(err);
-        this.addErrorMessage(err);
+        this.addErrorMessage(err.message);
       })
   }
   createFormData() {
@@ -78,8 +71,8 @@ class UploadVideoForm extends Component {
   isFormFieldsValid() {
     return !this.isFormFieldBlank("title");
   }
-  addErrorMessage(error) {
-    this.setState({ error: error.message });
+  addErrorMessage(errorMsg) {
+    this.setState({ errorMsg });
   }
   sendRedirect() {
     this.setState({
@@ -87,13 +80,13 @@ class UploadVideoForm extends Component {
     });
   }
   render() {
-    const { title, error, redirect, loaded } = this.state;
+    const { title, errorMsg, redirect, loaded } = this.state;
     if (redirect) {
       return <Redirect to="/profile" />;
     }
     return (
       <div>
-        {error ? <span className="error">{error}</span> : ""}
+        {errorMsg ? <span className="error">{errorMsg}</span> : ""}
         <form>
           <input type="text" name="title" value={title}
             onChange={this.handleInputChange} placeholder="Title" /><br />
@@ -102,7 +95,9 @@ class UploadVideoForm extends Component {
           <button type="submit"
             onClick={this.handleFileUpload}>Upload</button>
         </form>
-        {loaded ? <span>Loaded: {Math.round(loaded, 2)}%</span> : ""}
+        {loaded ? (
+          <p><span>Loading {Math.round(loaded, 2)}%</span></p>
+        ) : ""}
       </div>
     );
   }
