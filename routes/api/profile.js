@@ -57,6 +57,27 @@ function createVideoContentRecognition(contentRecognition) {
   return db.VideoContentRecognition.create(contentRecognition);
 }
 
+function createOrUpdateContentRecognition(dbVideo, contentRecognition, fn) {
+  if (dbVideo.contentRecognition) {
+    db.VideoContentRecognition.findByIdAndUpdate(
+      dbVideo.contentRecognition._id,
+      contentRecognition,
+      (err, dbContentRecognition) => {
+        if (err) return fn(err);
+        fn(null, dbContentRecognition);
+      });
+  } else {
+    createVideoContentRecognition(contentRecognition).then(
+      dbContentRecognition => {
+        dbVideo.contentRecognition = dbContentRecognition._id;
+        dbVideo.save(function (err) {
+          if (err) return fn(err);
+          fn(null, dbContentRecognition);
+        });
+      });
+  }
+}
+
 aws.config.region = "us-east-1";
 
 const s3 = new aws.S3();
@@ -98,13 +119,12 @@ function upload(video, fn) {
 
 const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
 
-function sendContentModerationRequest(fileName, contentRecognition, fn) {
-  console.log(`Sending request for content moderation on '${fileName}'.`);
+function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
   const params = {
     Video: {
       S3Object: {
-        Bucket: amazon.s3Bucket,
-        Name: fileName
+        Bucket: dbVideo.s3Bucket,
+        Name: dbVideo.fileName
       }
     },
     ClientRequestToken: contentRecognition.clientRequestToken,
@@ -117,7 +137,7 @@ function sendContentModerationRequest(fileName, contentRecognition, fn) {
   }
   rekognition.startContentModeration(params, function (err, data) {
     if (data) {
-      console.log(`Received JobId ${data.JobId} for '${fileName}'.`);
+      console.log(`Received data for JobId: ${data.JobId}.`);
       fn(null, data);
     } else {
       console.log(err, err.stack);
@@ -129,32 +149,19 @@ function sendContentModerationRequest(fileName, contentRecognition, fn) {
 function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
   const contentRecognition = {
     labels: [],
-    jobTag: uuidv1(),
+    jobTag: dbVideo._id,
     receivedLabelsAt: null,
     clientRequestToken: uuidv1()
   };
-  sendContentModerationRequest(dbVideo.fileName, contentRecognition,
+  sendContentModerationRequest(dbVideo, contentRecognition,
     (err, data) => {
       if (err) return fn(err);
       contentRecognition.jobId = data.JobId;
-      if (dbVideo.contentRecognition) {
-        db.VideoContentRecognition.findByIdAndUpdate(
-          dbVideo.contentRecognition._id,
-          contentRecognition,
-          (error, dbContentRecognition) => {
-            if (error) return fn(error);
-            fn(null, dbContentRecognition);
-          });
-      } else {
-        createVideoContentRecognition(contentRecognition).then(
-          dbContentRecognition => {
-            dbVideo.contentRecognition = dbContentRecognition._id;
-            dbVideo.save(function (error) {
-              if (error) return fn(error);
-              fn(null, dbContentRecognition);
-            });
-          });
-      }
+      createOrUpdateContentRecognition(dbVideo, contentRecognition,
+        (error, dbContentRecognition) => {
+          if (error) return fn(error);
+          fn(null, dbContentRecognition);
+        });
     });
 }
 
