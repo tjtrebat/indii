@@ -149,7 +149,7 @@ function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
 function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
   const contentRecognition = {
     labels: [],
-    jobTag: dbVideo._id,
+    jobTag: dbVideo._id.toString(),
     receivedLabelsAt: null,
     clientRequestToken: uuidv1()
   };
