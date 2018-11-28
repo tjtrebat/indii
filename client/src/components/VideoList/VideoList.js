@@ -3,18 +3,20 @@ import { Link } from "react-router-dom";
 import "./VideoList.css";
 
 export const VideoList = props => {
-  const { videos } = props; 
+  const { videos } = props;
   return (
     <div>
       {videos.length > 0 ? (
         <ul className="video-list">
           {videos.map(video => (
             <li key={video._id}>
-              <Link to={`/videos/${video._id}`}>{video.title}</Link> 
+              <Link to={`/videos/${video._id}`} className="video-title">{video.title}</Link>
               {video.user.username ? (
                 <span> by <Link to={`/users/${video.user.username}`}>{video.user.username}</Link></span>
               ) : ""}
-              <br />
+              {video.description ? (
+                <p className="video-description">{video.description}</p>
+              ) : ""}
               <span className="uploaded">Uploaded: {video.createdAt}</span>
             </li>
           ))}

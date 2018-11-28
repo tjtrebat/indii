@@ -1,5 +1,4 @@
 require("dotenv").config();
-
 const router = require("express").Router();
 const createError = require("http-errors");
 const aws = require("aws-sdk");
@@ -44,12 +43,13 @@ function getFormError(data) {
 }
 
 function createOrUpdateVideo(video) {
-  const { user, fileName, s3Bucket, title } = video;
+  const { user, title, description, fileName, s3Bucket } = video;
   return db.Video.findOneAndUpdate({ fileName }, {
     user,
     title,
     fileName,
-    s3Bucket
+    s3Bucket,
+    description
   }, { upsert: true, new: true, setDefaultsOnInsert: true });
 }
 
@@ -97,12 +97,13 @@ function putObjectInS3StorageBucket(videoFile, fn) {
 }
 
 function upload(video, fn) {
-  const { user, title, fileName, videoFile } = video;
+  const { user, title, description, fileName, videoFile } = video;
   if (isFormValid(video)) {
     createOrUpdateVideo({
       user,
       title,
       fileName,
+      description,
       s3Bucket: amazon.s3Bucket
     }).then(function (dbVideo) {
       return addUserVideo(user, dbVideo._id);
@@ -166,15 +167,15 @@ function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
 
 router.post("/upload", restrict, function (req, res) {
   const user = req.user;
-  const title = req.body.title;
+  const { title, description } = req.body;
   let fileName = "";
-  let videoFile = "";
+  let videoFile = null;
   if (req.files) {
     videoFile = req.files.file;
     fileName = `${user.username}_${videoFile.name}`;
     videoFile.name = fileName;
   }
-  const video = { user, title, fileName, videoFile };
+  const video = { user, title, description, fileName, videoFile };
   upload(video, (err, videos) => {
     if (videos) {
       const dbVideo = videos.filter(v => v.fileName === fileName)[0];

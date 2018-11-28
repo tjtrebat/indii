@@ -13,6 +13,14 @@
   border-top: 1px dotted #aaa;
 }
 
+.video-title {
+  text-decoration: underline;
+}
+
+.video-description {
+  padding: 10px 0px;
+}
+
 .uploaded {
   color: #777;
   font-size: 12px;

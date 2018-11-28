@@ -1,12 +1,14 @@
 import React, { Component } from "react";
 import { Redirect } from "react-router-dom";
 import API from "../../utils/API";
+import "./UploadVideoForm.css";
 
 class UploadVideoForm extends Component {
   constructor(props) {
     super(props);
     this.state = {
       title: "",
+      description: "",
       selectedFile: "",
       errorMsg: "",
       redirect: false,
@@ -47,10 +49,11 @@ class UploadVideoForm extends Component {
       })
   }
   createFormData() {
-    const { selectedFile, title } = this.state;
+    const { title, description, selectedFile } = this.state;
     const data = new FormData();
-    data.append("file", selectedFile);
     data.append("title", title);
+    data.append("file", selectedFile);
+    data.append("description", description);
     return data;
   }
   isFileFieldValid() {
@@ -80,7 +83,7 @@ class UploadVideoForm extends Component {
     });
   }
   render() {
-    const { title, errorMsg, redirect, loaded } = this.state;
+    const { title, description, errorMsg, redirect, loaded } = this.state;
     if (redirect) {
       return <Redirect to="/profile" />;
     }
@@ -88,16 +91,24 @@ class UploadVideoForm extends Component {
       <div>
         {errorMsg ? <span className="error">{errorMsg}</span> : ""}
         <form>
-          <input type="text" name="title" value={title}
-            onChange={this.handleInputChange} placeholder="Title" /><br />
-          <input type="file" name="uploadFile"
-            onChange={this.handleFileChange} />
-          <button type="submit"
+          <div className="form-control">
+            <input type="text" name="title" value={title}
+              onChange={this.handleInputChange} placeholder="Title" />
+          </div>
+          <div className="form-control">
+            <textarea name="description" value={description}
+              onChange={this.handleInputChange} placeholder="Description"></textarea>
+          </div>
+          <div className="form-control">
+            <input type="file" name="uploadFile"
+              onChange={this.handleFileChange} />
+          </div>
+          <button type="submit" className="btn-upload"
             onClick={this.handleFileUpload}>Upload</button>
+          {loaded ? (
+            <span className="loading">Loading {Math.round(loaded, 2)}%</span>
+          ) : ""}
         </form>
-        {loaded ? (
-          <p><span>Loading {Math.round(loaded, 2)}%</span></p>
-        ) : ""}
       </div>
     );
   }

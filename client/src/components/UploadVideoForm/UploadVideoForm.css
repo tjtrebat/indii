@@ -1,0 +1,20 @@
+.form-control {
+  padding: 3px 0px;
+}
+
+.form-control > input, textarea {
+  width: 50%;
+}
+
+textarea {
+  height: 100px;
+}
+
+.btn-upload {
+  margin-top: 20px;
+}
+
+.loading {
+  font-style: italic;
+  padding-left: 5px;
+}
