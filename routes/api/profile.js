@@ -7,6 +7,12 @@ const uuidv1 = require("uuid/v1");
 const db = require("../../models");
 const { amazon } = require("../../keys");
 
+aws.config.region = "us-east-1";
+
+const s3 = new aws.S3();
+
+const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
+
 function restrict(req, res, next) {
   if (req.user) {
     return next();
@@ -78,10 +84,6 @@ function createOrUpdateContentRecognition(dbVideo, contentRecognition, fn) {
   }
 }
 
-aws.config.region = "us-east-1";
-
-const s3 = new aws.S3();
-
 function putObjectInS3StorageBucket(videoFile, fn) {
   s3.putObject({
     ACL: "public-read",
@@ -105,7 +107,6 @@ function upload(video, fn) {
     }).then(function (dbVideo) {
       return addUserVideo(user, dbVideo._id);
     }).then(function (dbUser) {
-      videoFile.name = fileName;
       putObjectInS3StorageBucket(videoFile,
         err => {
           if (err) throw err;
@@ -116,8 +117,6 @@ function upload(video, fn) {
     fn(getFormError(video));
   }
 }
-
-const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
 
 function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
   const params = {
@@ -173,6 +172,7 @@ router.post("/upload", restrict, function (req, res) {
   if (req.files) {
     videoFile = req.files.file;
     fileName = `${user.username}_${videoFile.name}`;
+    videoFile.name = fileName;
   }
   const video = { user, title, fileName, videoFile };
   upload(video, (err, videos) => {

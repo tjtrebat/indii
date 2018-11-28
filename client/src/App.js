@@ -57,9 +57,9 @@ class App extends Component {
   render() {
     const { user } = this.state;
     return (
-      <div>
+      <div className="container">
         <Router>
-          <div>
+          <div className="content">
             <Header user={user.username}
               handleClick={this.handleLogout} />
             <Nav user={user} />

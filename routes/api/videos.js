@@ -2,6 +2,10 @@ const router = require("express").Router();
 const aws = require("aws-sdk");
 const db = require("../../models");
 
+aws.config.region = "us-east-1";
+
+const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
+
 function getVideos(fn) {
   db.Video.find({}).sort({
     createdAt: -1
@@ -21,11 +25,6 @@ function getVideo(id) {
 function createVideoContentRecognitionLabels(labels) {
   return db.VideoContentRecognitionLabel.create(labels);
 }
-
-
-aws.config.region = "us-east-1";
-
-const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
 
 function requestModerationLabels(jobId, fn) {
   rekognition.getContentModeration({

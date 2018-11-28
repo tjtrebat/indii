@@ -1,0 +1,11 @@
+.nav-list {
+  padding: 15px 0px;
+}
+
+.nav-list > li {
+  display: inline-block;
+}
+
+.nav-list > li + li {
+  margin-left: 10px;
+}

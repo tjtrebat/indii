@@ -1,0 +1,15 @@
+.header {
+  flex: 1 100%;
+  align-self: flex-end;
+  margin-bottom: 25px;
+  margin-top: 5px;
+}
+
+.header-nav > li {
+  display: inline-block;
+  margin: 3px;
+}
+
+.welcome {
+  padding-right: 3px;
+}
