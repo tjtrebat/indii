@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { VideoList } from "../../components/VideoList";
+import VideoList from "../../components/VideoList";
 import API from "../../utils/API";
 
 class Home extends Component {

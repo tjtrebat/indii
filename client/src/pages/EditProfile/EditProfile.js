@@ -1,6 +1,6 @@
 import React, { Component } from "react";
 import { Redirect } from "react-router-dom";
-import { VideoList } from "../../components/VideoList";
+import VideoList from "../../components/VideoList";
 
 class EditProfile extends Component {
   constructor(props) {
@@ -36,7 +36,7 @@ class EditProfile extends Component {
     return (
       <div>
         <h3 className="page-header">Profile</h3>
-        <VideoList videos={videos} />
+        <VideoList user={this.props.user} videos={videos} />
       </div>
     );
   }
