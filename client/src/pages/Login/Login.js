@@ -50,7 +50,7 @@ class Login extends Component {
         }
         return (
             <div>
-                <h3>Login</h3>
+                <h3 className="page-header">Login</h3>
                 {errorMsg ? <span className="error">{errorMsg}</span> : ""}
                 <form>
                     <input type="text" name="username" value={username}

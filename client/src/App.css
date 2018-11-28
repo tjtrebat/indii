@@ -29,6 +29,10 @@ h5 {
   flex-direction: column;
 }
 
+.page-header {
+  padding-bottom: 5px;
+}
+
 .error {
   color: #f00;
 }

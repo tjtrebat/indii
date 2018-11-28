@@ -6,7 +6,7 @@ export const VideoList = props => {
   const { videos } = props; 
   return (
     <div>
-      {videos ? (
+      {videos.length > 0 ? (
         <ul className="video-list">
           {videos.map(video => (
             <li key={video._id}>

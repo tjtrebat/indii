@@ -30,7 +30,7 @@ class UploadVideo extends Component {
     }
     return (
       <div>
-        <h3>Upload Video</h3>
+        <h3 className="page-header">Upload Video</h3>
         <UploadVideoForm />
       </div>
     )

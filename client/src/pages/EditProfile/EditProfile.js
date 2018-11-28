@@ -35,7 +35,7 @@ class EditProfile extends Component {
     }
     return (
       <div>
-        <h3>Profile</h3>
+        <h3 className="page-header">Profile</h3>
         <VideoList videos={videos} />
       </div>
     );

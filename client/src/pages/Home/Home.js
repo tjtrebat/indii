@@ -17,7 +17,7 @@ class Home extends Component {
         const { videos } = this.state;
         return (
             <div>
-                <h3>Home</h3>
+                <h3 className="page-header">Home</h3>
                 <VideoList videos={videos} />
             </div>
         );
