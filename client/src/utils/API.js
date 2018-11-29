@@ -34,5 +34,8 @@ export default {
     },
     getVideo: function (id) {
         return axios.get(`/api/videos/${id}`);
+    },
+    deleteVideo: function (id) {
+        return axios.delete(`/api/videos/${id}`);
     }
 };

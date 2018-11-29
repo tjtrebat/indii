@@ -127,4 +127,27 @@ router.get("/:videoId", function (req, res) {
   });
 });
 
+router.delete("/:videoId", function (req, res) {
+  db.Video.findByIdAndRemove(req.params.videoId).then(
+    dbVideo => {
+      db.VideoContentRecognition.findByIdAndRemove(dbVideo.contentRecognition).then(
+        dbContentRecognition => {
+          db.VideoContentRecognitionLabel.deleteMany({
+            _id: { $in: dbContentRecognition.labels }
+          }, function (err) {
+            if (err) throw err;
+            db.User.findByIdAndUpdate(req.user._id, {
+              $pull: { videos: dbVideo._id }
+            }, { new: true }).populate("videos").then(
+              dbUser => res.json(dbUser.videos));
+          });
+        }
+      )
+    }
+  ).catch(err => {
+    console.log(err);
+    res.status(500).end();
+  });
+});
+
 module.exports = router;

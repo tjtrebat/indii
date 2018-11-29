@@ -1,37 +1,33 @@
-import React, { Component } from "react";
+import React from "react";
 import { Link } from "react-router-dom";
 import "./VideoList.css";
 
-class VideoList extends Component {
-  handleClick(id) {
-    console.log("I'm clicked: " + id);
-  }
-  render() {
-    const { user, videos } = this.props;
-    return (
-      <div>
-        {videos.length > 0 ? (
-          <ul className="video-list">
-            {videos.map(video => (
-              <li key={video._id}>
+export const VideoList = props => {
+  const { user, videos } = props;
+  return (
+    <div>
+      {videos.length > 0 ? (
+        <ul className="video-list">
+          {videos.map(video => (
+            <li key={video._id}>
+              <div className="video-info">
                 <Link to={`/videos/${video._id}`} className="video-title">{video.title}</Link>
-                {video.user.username ? (
+                {(video.user && video.user.username) ? (
                   <span> by <Link to={`/users/${video.user.username}`}>{video.user.username}</Link></span>
                 ) : ""}
                 {video.description ? (
                   <p className="video-description">{video.description}</p>
                 ) : ""}
                 <span className="uploaded">Uploaded: {video.createdAt}</span>
-                {user ? (
-                  <button type="button" onClick={() => this.handleClick(video._id)}>Delete</button>
-                ) : ""}
-              </li>
-            ))}
-          </ul>
-        ) : "No video(s) to be shown."}
-      </div>
-    );
-  }
+              </div>
+              {user ? (
+                <button type="button" className="btn-delete"
+                  onClick={() => props.handleClick(video._id)}>Delete</button>
+              ) : ""}
+            </li>
+          ))}
+        </ul>
+      ) : "No video(s) to be shown."}
+    </div>
+  );
 }
-
-export default VideoList;
