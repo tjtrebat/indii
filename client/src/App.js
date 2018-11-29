@@ -75,7 +75,8 @@ class App extends Component {
               render={() => <UploadVideo user={user}
                 getUserStatus={this.getUserStatus} />} />
             <Route exact path="/users/:username" component={ViewProfile} />
-            <Route exact path="/videos/:videoId" component={ShowVideo} />
+            <Route exact path="/videos/:videoId"
+              render={({ match }) => <ShowVideo user={user} match={match} />} />
           </div>
         </Router>
       </div>

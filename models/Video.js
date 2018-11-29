@@ -27,6 +27,10 @@ const VideoSchema = new Schema({
     type: Schema.Types.ObjectId,
     ref: "VideoContentRecognition"
   },
+  comments: [{
+    type: Schema.Types.ObjectId,
+    ref: "Comment"
+  }],
   createdAt: {
     type: Date,
     default: Date.now

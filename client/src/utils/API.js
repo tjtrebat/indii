@@ -37,5 +37,8 @@ export default {
     },
     deleteVideo: function (id) {
         return axios.delete(`/api/videos/${id}`);
+    },
+    submitComment: function (id, data) {
+        return axios.post(`/api/videos/${id}`, data);
     }
 };

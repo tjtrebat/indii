@@ -1,0 +1,16 @@
+.comments {
+  margin-top: 25px;
+}
+
+.user-comments {
+  margin: 10px 0px;
+}
+
+.user-comments > li {
+  padding: 10px 0px;
+}
+
+
+.user-comments > li + li {
+  border-top: 1px dotted #aaa;
+}

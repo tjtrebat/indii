@@ -18,8 +18,9 @@ function getVideos(fn) {
   });
 }
 
-function getVideo(id) {
-  return db.Video.findById(id).populate("user contentRecognition");
+async function getVideo(id) {
+  const dbVideo = await db.Video.findById(id).populate("user contentRecognition comments").exec();
+  return db.User.populate(dbVideo, { path: "comments.user", select: "username" });
 }
 
 function createVideoContentRecognitionLabels(labels) {
@@ -148,6 +149,27 @@ router.delete("/:videoId", function (req, res) {
     console.log(err);
     res.status(500).end();
   });
+});
+
+router.post("/:videoId", function (req, res) {
+  db.Comment.create({
+    user: req.user._id,
+    text: req.body.text.trim()
+  }).then(dbComment => {
+    console.log(dbComment);
+    return db.Video.findByIdAndUpdate(req.params.videoId, {
+      $push: { comments: dbComment._id }
+    }, { new: true }).populate("comments");
+  }).then(dbVideo => {
+    db.User.populate(dbVideo, { path: "comments.user", select: "username" },
+      (err, video) => {
+        if (err) throw err;
+        res.json(video);
+      });
+  }).catch(err => {
+    console.log(err);
+    res.status(500).end();
+  })
 });
 
 module.exports = router;
