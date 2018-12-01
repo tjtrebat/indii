@@ -37,7 +37,7 @@ function getFormError(data) {
   const { title, videoFile } = data;
   if (isBlank(title)) {
     return createError(400, "Title must not be empty.");
-  } else if (!(videoFile && isValidMp4File(videoFile))) {
+  } else if (!videoFile || !isValidMp4File(videoFile)) {
     return createError(415, "Invalid (.mp4) file.");
   }
 }
@@ -98,25 +98,21 @@ function putObjectInS3StorageBucket(videoFile, fn) {
 
 function upload(video, fn) {
   const { user, title, description, fileName, videoFile } = video;
-  if (isFormValid(video)) {
-    createOrUpdateVideo({
-      user,
-      title,
-      fileName,
-      description,
-      s3Bucket: amazon.s3Bucket
-    }).then(function (dbVideo) {
-      return addUserVideo(user, dbVideo._id);
-    }).then(function (dbUser) {
-      putObjectInS3StorageBucket(videoFile,
-        err => {
-          if (err) throw err;
-          return fn(null, dbUser.videos);
-        });
-    });
-  } else {
-    fn(getFormError(video));
-  }
+  createOrUpdateVideo({
+    user,
+    title,
+    fileName,
+    description,
+    s3Bucket: amazon.s3Bucket
+  }).then(function (dbVideo) {
+    return addUserVideo(user, dbVideo._id);
+  }).then(function (dbUser) {
+    putObjectInS3StorageBucket(videoFile,
+      err => {
+        if (err) return fn(err);
+        return fn(null, dbUser.videos);
+      });
+  });
 }
 
 function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
@@ -168,30 +164,31 @@ function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
 router.post("/upload", restrict, function (req, res) {
   const user = req.user;
   const { title, description } = req.body;
-  let fileName = "";
-  let videoFile = null;
-  if (req.files) {
-    videoFile = req.files.file;
-    fileName = `${user.username}_${videoFile.name}`;
+  const videoFile = req.files ? req.files.file : null;
+  if (isFormValid({ title, videoFile })) {
+    const fileName = `${user.username}_${videoFile.name}`;
+    const video = { user, title, description, fileName, videoFile };
     videoFile.name = fileName;
+    upload(video, (err, videos) => {
+      if (videos) {
+        const dbVideo = videos.filter(v => v.fileName === fileName)[0];
+        sendRequestAndUpdateContentRecognition(dbVideo,
+          (error, dbContentRecognition) => {
+            if (dbContentRecognition) {
+              res.json(videos)
+            } else {
+              console.log(error);
+              return res.status(500).end();
+            }
+          });
+      } else {
+        console.log(err);
+        res.status(500).end();
+      }
+    });
+  } else {
+    res.status(getFormError({ title, videoFile }).status).end();
   }
-  const video = { user, title, description, fileName, videoFile };
-  upload(video, (err, videos) => {
-    if (videos) {
-      const dbVideo = videos.filter(v => v.fileName === fileName)[0];
-      sendRequestAndUpdateContentRecognition(dbVideo,
-        (error, dbContentRecognition) => {
-          if (dbContentRecognition) {
-            res.json(videos)
-          } else {
-            console.log(error);
-            return res.status(500).end();
-          }
-        });
-    } else {
-      res.status(err.status).end();
-    }
-  });
 });
 
 module.exports = router;

@@ -1,5 +1,5 @@
 import React, { Component } from "react";
-import { Video } from "../../components/Video";
+import Video from "../../components/Video";
 import API from "../../utils/API";
 import "./ShowVideo.css";
 
@@ -41,12 +41,19 @@ class ShowVideo extends Component {
     if (!video) {
       return <span>Video is unavailable.</span>;
     }
+    const videoJsOptions = {
+      autoplay: true,
+      controls: true,
+      sources: [{
+        src: `https://s3.amazonaws.com/${video.s3Bucket}/${video.fileName}`,
+        type: 'video/mp4'
+      }]
+    }
     return (
       <div>
         Title: {video.title}<br />
         Uploaded: {video.createdAt}<br />
-        <Video url={`https://s3.amazonaws.com/${video.s3Bucket}/${video.fileName}`}
-          width="320" height="240" controls />
+        <Video {...videoJsOptions} />
         <div className="comments">
           <h3>Comments</h3>
           {this.props.user ? (

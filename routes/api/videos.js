@@ -51,7 +51,7 @@ function requestModerationLabels(jobId, fn) {
       });
       fn(null, moderationLabels);
     } else {
-      fn(new Error(`An error occurred. JobStatus: ${data.JobStatus}`));
+      fn(new Error(`JobStatus: ${data.JobStatus}`));
     }
   });
 }

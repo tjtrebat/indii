@@ -1,5 +1,5 @@
 {
-  "name": "nytreact",
+  "name": "indii",
   "version": "1.0.0",
   "description": "NYT API website",
   "main": "server.js",
@@ -40,6 +40,7 @@
     "passport": "^0.4.0",
     "passport-local": "^1.0.0",
     "react-router-dom": "^4.3.1",
-    "uuid": "^3.3.2"
+    "uuid": "^3.3.2",
+    "video.js": "^7.3.0"
   }
 }
