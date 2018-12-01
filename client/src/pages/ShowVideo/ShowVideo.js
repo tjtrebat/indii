@@ -44,6 +44,8 @@ class ShowVideo extends Component {
     const videoJsOptions = {
       autoplay: true,
       controls: true,
+      width: "320",
+      height: "240",
       sources: [{
         src: `https://s3.amazonaws.com/${video.s3Bucket}/${video.fileName}`,
         type: 'video/mp4'

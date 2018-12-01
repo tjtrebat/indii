@@ -16,8 +16,7 @@ export default class Video extends Component {
   render() {
     return (
       <div data-vjs-player>
-        <video ref={node => this.videoNode = node} className="video-js">
-          <source src={this.props.url} type="video/mp4" />
+        <video ref={node => this.videoNode = node} className="video-js vjs-default-skin vjs-big-play-centered">
           Your browser does not support the video tag.
         </video>
       </div>
