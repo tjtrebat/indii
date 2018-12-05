@@ -15,14 +15,16 @@ export const VideoList = props => {
                 {(video.user && video.user.username) ? (
                   <span> by <Link to={`/users/${video.user.username}`}>{video.user.username}</Link></span>
                 ) : ""}
+                <span className="video-uploaded">(Uploaded: {video.createdAt})</span>
                 {video.description ? (
                   <p className="video-description">{video.description}</p>
-                ) : ""}
-                <span className="uploaded">Uploaded: {video.createdAt}</span>
+                ) : <br />}
               </div>
               {user ? (
-                <button type="button" className="btn-delete"
-                  onClick={() => props.handleClick(video._id)}>Delete</button>
+                <div className="video-delete">
+                  <button type="button" className="btn-delete"
+                    onClick={() => props.handleClick(video._id)}>Delete</button>
+                </div>
               ) : ""}
             </li>
           ))}

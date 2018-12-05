@@ -36,3 +36,21 @@ h5 {
 .error {
   color: #f00;
 }
+
+.video-info {
+  flex: 1 100%;
+}
+
+.video-title {
+  text-decoration: underline;
+}
+
+.video-description {
+  margin: 15px 0px;
+}
+
+.video-uploaded {
+  color: #777;
+  font-size: 12px;
+  padding: 0px 5px;
+}

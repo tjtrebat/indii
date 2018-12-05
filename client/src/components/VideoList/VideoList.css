@@ -14,30 +14,15 @@
   border-top: 1px dotted #aaa;
 }
 
-.video-info {
-  flex: 1 100%;
-}
-
-.video-title {
-  text-decoration: underline;
-}
-
-.video-description {
-  padding: 10px 0px;
-}
-
-.uploaded {
-  color: #777;
-  font-size: 12px;
+.video-delete {
+  align-self: center;
 }
 
 .btn-delete {
-  align-self: flex-end;
   background: none;
   border: 1px solid #f00;
   border-radius: 5px;
   color: #000;
-  flex: 0 10%;
   padding: 5px 15px;
 }
 

@@ -26,6 +26,9 @@ export default {
             }
         });
     },
+    deleteVideo: function (id) {
+        return axios.delete(`/api/profile/videos/${id}`);
+    },
     getUserVideos: function (username) {
         return axios.get(`/api/users/videos/${username}`);
     },
@@ -34,9 +37,6 @@ export default {
     },
     getVideo: function (id) {
         return axios.get(`/api/videos/${id}`);
-    },
-    deleteVideo: function (id) {
-        return axios.delete(`/api/videos/${id}`);
     },
     submitComment: function (id, data) {
         return axios.post(`/api/videos/${id}`, data);

@@ -1,4 +1,5 @@
 import React, { Component } from "react";
+import { Link } from "react-router-dom";
 import Video from "../../components/Video";
 import API from "../../utils/API";
 import "./ShowVideo.css";
@@ -42,7 +43,7 @@ class ShowVideo extends Component {
       return <span>Video is unavailable.</span>;
     }
     const videoJsOptions = {
-      autoplay: true,
+      autoplay: false,
       controls: true,
       width: "320",
       height: "240",
@@ -53,11 +54,14 @@ class ShowVideo extends Component {
     }
     return (
       <div>
-        Title: {video.title}<br />
-        Uploaded: {video.createdAt}<br />
+        <div className="video-info">
+          <span className="video-title">Title: {video.title}</span>
+          <span className="video-uploaded">(Uploaded: {video.createdAt})</span>
+          <p className="video-description">{video.description}</p>
+        </div>
         <Video {...videoJsOptions} />
         <div className="comments">
-          <h3>Comments</h3>
+          <h3 className="comments-heading">Comments</h3>
           {this.props.user ? (
             <form>
               <p>Please use the form below for your comment.</p>
@@ -68,8 +72,11 @@ class ShowVideo extends Component {
           {video.comments.length > 0 ? (
             <ul className="user-comments">
               {video.comments.map(comment => (
-                <li key={comment._id}>{comment.text}<br />
-                <span>by {comment.user.username}</span> on {comment.createdAt}</li>
+                <li key={comment._id}>
+                  <p className="comment-text">{comment.text}</p>
+                  <span>by <Link to={`/users/${comment.user.username}`}>
+                    {comment.user.username}</Link> on {comment.createdAt}</span>
+                </li>
               ))}
             </ul>
           ) : "No comment(s) to be shown."}

@@ -1,24 +1,18 @@
 require("dotenv").config();
 
-const router = require("express").Router();
-const createError = require("http-errors");
 const aws = require("aws-sdk");
 const uuidv1 = require("uuid/v1");
 const { amazon } = require("../../keys");
-const videosController = require("../../controllers/videosController");
+const router = require("express").Router();
+const createError = require("http-errors");
+const { usersController, videosController,
+  contentRecognitionController } = require("../../controllers");
 
 aws.config.region = "us-east-1";
 
 const s3 = new aws.S3();
 
 const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
-
-function restrict(req, res, next) {
-  if (req.user) {
-    return next();
-  }
-  res.status(401).end();
-}
 
 function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
   const params = {
@@ -58,7 +52,8 @@ function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
     (err, data) => {
       if (err) return fn(err);
       contentRecognition.jobId = data.JobId;
-      videosController.updateContentRecognition(dbVideo, contentRecognition,
+      contentRecognitionController.updateContentRecognition(
+        dbVideo, contentRecognition,
         (error, dbContentRecognition) => {
           if (error) return fn(error);
           fn(null, dbContentRecognition);
@@ -87,7 +82,7 @@ function upload(video, fn) {
     description,
     s3Bucket: amazon.s3Bucket
   }).then(function (dbVideo) {
-    return videosController.addUserVideo(user, dbVideo._id);
+    return usersController.addUserVideo(user, dbVideo._id);
   }).then(function (dbUser) {
     putObjectInS3StorageBucket(videoFile,
       err => {
@@ -120,6 +115,13 @@ function getFormError(data) {
   }
 }
 
+function restrict(req, res, next) {
+  if (req.user) {
+    return next();
+  }
+  res.status(401).end();
+}
+
 router.post("/upload", restrict, function (req, res) {
   const user = req.user;
   const { title, description } = req.body;
@@ -149,6 +151,30 @@ router.post("/upload", restrict, function (req, res) {
     const formError = getFormError({ title, videoFile });
     res.status(formError.status).end();
   }
+});
+
+router.delete("/videos/:videoId", restrict, function (req, res) {
+  videosController.deleteVideo(req.params.videoId).then(
+    dbVideo => {
+      contentRecognitionController.deleteContentRecognition(
+        dbVideo.contentRecognition
+      ).then(
+        dbContentRecognition => {
+          contentRecognitionController.deleteContentRecognitionLabels(
+            dbContentRecognition.labels,
+            err => {
+              if (err) throw err;
+              usersController.removeUserVideo(req.user._id, dbVideo._id).then(
+                dbUser => {
+                  res.json(dbUser.videos)
+                });
+            });
+        });
+    }
+  ).catch(err => {
+    console.log(err);
+    res.status(500).end();
+  });
 });
 
 module.exports = router;

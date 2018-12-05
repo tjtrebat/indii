@@ -1,7 +1,7 @@
 require("dotenv").config();
 const router = require("express").Router();
 const passport = require("../../config/passport");
-const db = require("../../models");
+const { usersController } = require("../../controllers");
 
 router.post("/login", passport.authenticate("local"),
   function (req, res) {
@@ -14,21 +14,20 @@ router.get("/logout", function (req, res) {
 });
 
 function register(username, password, fn) {
-  db.User.findOne({ username }).then(dbUser => {
-    if (dbUser) {
-      return fn(new Error("User is already registered."));
-    }
-    db.User.create({
-      username,
-      password
-    }).then(user => {
-      fn(null, user)
-    }).catch(err => {
-      fn(new Error("An error occurred. Error: ", err));
-    });
-  }).catch(err => {
-    fn(new Error("An error occurred. Error: ", err));
-  });
+  usersController.getUserByUsername(
+    username
+  ).then(
+    dbUser => {
+      if (dbUser) return fn(new Error("User is already registered."));
+      usersController.createUser({
+        username,
+        password
+      }).then(user => {
+        fn(null, user)
+      }).catch(err => {
+        fn(new Error("An error occurred. Error: ", err));
+      });
+    }).catch(err => fn(new Error("An error occurred. Error: ", err)));
 }
 
 router.post("/register", function (req, res) {
@@ -49,10 +48,11 @@ router.post("/register", function (req, res) {
 router.get("/getUserStatus", function (req, res) {
   const user = req.user;
   if (user) {
-    db.User.findById(user._id).populate("videos").then(
-      function (dbUser) {
-        res.json(dbUser);
-      }).catch(function (err) {
+    usersController.getUser(
+      user._id
+    ).then(function (dbUser) {
+      res.json(dbUser);
+    }).catch(function (err) {
       console.log(err);
       res.status(500).end();
     });
@@ -67,9 +67,9 @@ router.get("/logout", function (req, res) {
 });
 
 function getUserVideos(username, fn) {
-  db.User.findOne({
+  usersController.getUserByUsername(
     username
-  }).populate("videos").then(
+  ).populate("videos").then(
     function (dbUser) {
       fn(null, dbUser.videos);
     }
