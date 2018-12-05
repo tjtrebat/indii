@@ -1,10 +1,11 @@
 require("dotenv").config();
+
 const router = require("express").Router();
 const createError = require("http-errors");
 const aws = require("aws-sdk");
 const uuidv1 = require("uuid/v1");
-const db = require("../../models");
 const { amazon } = require("../../keys");
+const videosController = require("../../controllers/videosController");
 
 aws.config.region = "us-east-1";
 
@@ -17,102 +18,6 @@ function restrict(req, res, next) {
     return next();
   }
   res.status(401).end();
-}
-
-function isValidMp4File(videoFile) {
-  const { name, mimetype } = videoFile;
-  return name.match(/\.(mp4|MP4)$/u) && mimetype === "video/mp4";
-}
-
-function isBlank(value) {
-  return !(value && value.trim());
-}
-
-function isFormValid(data) {
-  const { title, videoFile } = data;
-  return videoFile && isValidMp4File(videoFile) && !isBlank(title);
-}
-
-function getFormError(data) {
-  const { title, videoFile } = data;
-  if (isBlank(title)) {
-    return createError(400, "Title must not be empty.");
-  } else if (!videoFile || !isValidMp4File(videoFile)) {
-    return createError(415, "Invalid (.mp4) file.");
-  }
-}
-
-function createOrUpdateVideo(video) {
-  const { user, title, description, fileName, s3Bucket } = video;
-  return db.Video.findOneAndUpdate({ fileName }, {
-    user,
-    title,
-    fileName,
-    s3Bucket,
-    description
-  }, { upsert: true, new: true, setDefaultsOnInsert: true });
-}
-
-function addUserVideo(userId, videoId) {
-  return db.User.findByIdAndUpdate(userId,
-    { $addToSet: { videos: videoId } },
-    { new: true }).populate("videos");
-}
-
-function createVideoContentRecognition(contentRecognition) {
-  return db.VideoContentRecognition.create(contentRecognition);
-}
-
-function createOrUpdateContentRecognition(dbVideo, contentRecognition, fn) {
-  if (dbVideo.contentRecognition) {
-    db.VideoContentRecognition.findByIdAndUpdate(
-      dbVideo.contentRecognition._id,
-      contentRecognition,
-      (err, dbContentRecognition) => {
-        if (err) return fn(err);
-        fn(null, dbContentRecognition);
-      });
-  } else {
-    createVideoContentRecognition(contentRecognition).then(
-      dbContentRecognition => {
-        dbVideo.contentRecognition = dbContentRecognition._id;
-        dbVideo.save(function (err) {
-          if (err) return fn(err);
-          fn(null, dbContentRecognition);
-        });
-      });
-  }
-}
-
-function putObjectInS3StorageBucket(videoFile, fn) {
-  s3.putObject({
-    ACL: "public-read",
-    Key: videoFile.name,
-    Body: videoFile.data,
-    Bucket: amazon.s3Bucket
-  }, function (err) {
-    if (err) console.log(err, err.stack);
-    fn(err);
-  });
-}
-
-function upload(video, fn) {
-  const { user, title, description, fileName, videoFile } = video;
-  createOrUpdateVideo({
-    user,
-    title,
-    fileName,
-    description,
-    s3Bucket: amazon.s3Bucket
-  }).then(function (dbVideo) {
-    return addUserVideo(user, dbVideo._id);
-  }).then(function (dbUser) {
-    putObjectInS3StorageBucket(videoFile,
-      err => {
-        if (err) return fn(err);
-        return fn(null, dbUser.videos);
-      });
-  });
 }
 
 function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
@@ -153,12 +58,66 @@ function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
     (err, data) => {
       if (err) return fn(err);
       contentRecognition.jobId = data.JobId;
-      createOrUpdateContentRecognition(dbVideo, contentRecognition,
+      videosController.updateContentRecognition(dbVideo, contentRecognition,
         (error, dbContentRecognition) => {
           if (error) return fn(error);
           fn(null, dbContentRecognition);
         });
     });
+}
+
+function putObjectInS3StorageBucket(videoFile, fn) {
+  s3.putObject({
+    ACL: "public-read",
+    Key: videoFile.name,
+    Body: videoFile.data,
+    Bucket: amazon.s3Bucket
+  }, function (err) {
+    if (err) console.log(err, err.stack);
+    fn(err);
+  });
+}
+
+function upload(video, fn) {
+  const { user, title, description, fileName, videoFile } = video;
+  videosController.updateVideo({
+    user,
+    title,
+    fileName,
+    description,
+    s3Bucket: amazon.s3Bucket
+  }).then(function (dbVideo) {
+    return videosController.addUserVideo(user, dbVideo._id);
+  }).then(function (dbUser) {
+    putObjectInS3StorageBucket(videoFile,
+      err => {
+        if (err) return fn(err);
+        return fn(null, dbUser.videos);
+      });
+  });
+}
+
+function isValidMp4File(videoFile) {
+  const { name, mimetype } = videoFile;
+  return name.match(/\.(mp4|MP4)$/u) && mimetype === "video/mp4";
+}
+
+function isBlank(value) {
+  return !(value && value.trim());
+}
+
+function isFormValid(data) {
+  const { title, videoFile } = data;
+  return videoFile && isValidMp4File(videoFile) && !isBlank(title);
+}
+
+function getFormError(data) {
+  const { title, videoFile } = data;
+  if (isBlank(title)) {
+    return createError(400, "Title must not be empty.");
+  } else if (!videoFile || !isValidMp4File(videoFile)) {
+    return createError(415, "Invalid (.mp4) file.");
+  }
 }
 
 router.post("/upload", restrict, function (req, res) {
@@ -178,7 +137,7 @@ router.post("/upload", restrict, function (req, res) {
               res.json(videos)
             } else {
               console.log(error);
-              return res.status(500).end();
+              res.status(500).end();
             }
           });
       } else {
@@ -187,7 +146,8 @@ router.post("/upload", restrict, function (req, res) {
       }
     });
   } else {
-    res.status(getFormError({ title, videoFile }).status).end();
+    const formError = getFormError({ title, videoFile });
+    res.status(formError.status).end();
   }
 });
 

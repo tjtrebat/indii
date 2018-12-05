@@ -1,31 +1,10 @@
 const router = require("express").Router();
 const aws = require("aws-sdk");
-const db = require("../../models");
+const videosController = require("../../controllers/videosController");
 
 aws.config.region = "us-east-1";
 
 const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
-
-function getVideos(fn) {
-  db.Video.find({}).sort({
-    createdAt: -1
-  }).populate("user").then(
-    function (videos) {
-      fn(null, videos);
-    }
-  ).catch(err => {
-    fn(new Error("An error occurred. Error: ", err));
-  });
-}
-
-async function getVideo(id) {
-  const dbVideo = await db.Video.findById(id).populate("user contentRecognition comments").exec();
-  return db.User.populate(dbVideo, { path: "comments.user", select: "username" });
-}
-
-function createVideoContentRecognitionLabels(labels) {
-  return db.VideoContentRecognitionLabel.create(labels);
-}
 
 function requestModerationLabels(jobId, fn) {
   rekognition.getContentModeration({
@@ -61,7 +40,7 @@ function requestLabelsAndSaveContentRecognition(contentRecognition, fn) {
   requestModerationLabels(jobId, (err, data) => {
     if (err) return fn(err);
     console.log(`Received labels (${data.length}) for JobId ${jobId}.`);
-    createVideoContentRecognitionLabels(data).then(
+    videosController.createContentRecognitionLabels(data).then(
       dbLabels => {
         contentRecognition.labels = dbLabels;
         contentRecognition.receivedLabelsAt = Date.now();
@@ -74,7 +53,7 @@ function requestLabelsAndSaveContentRecognition(contentRecognition, fn) {
 }
 
 router.get("/", function (req, res) {
-  getVideos((err, videos) => {
+  videosController.getVideos((err, videos) => {
     if (videos) {
       res.json(videos);
     } else {
@@ -85,21 +64,20 @@ router.get("/", function (req, res) {
 });
 
 router.get("/:videoId", function (req, res) {
-  getVideo(req.params.videoId).then(video => {
+  videosController.getVideo(req.params.videoId).then(video => {
     if (video) {
       const { contentRecognition } = video;
       if (contentRecognition) {
         if (contentRecognition.receivedLabelsAt) {
-          db.VideoContentRecognitionLabel.populate(video, {
-            path: "contentRecognition.labels"
-          }, (err, dbVideo) => {
-            if (err) throw err;
-            if (dbVideo.contentRecognition.hasExplicitLabels()) {
-              res.status(404).end();
-            } else {
-              res.json(video);
-            }
-          });
+          videosController.populateContentRecognitionLabels(video,
+            (err, dbVideo) => {
+              if (err) throw err;
+              if (dbVideo.contentRecognition.hasExplicitLabels()) {
+                res.status(404).end();
+              } else {
+                res.json(video);
+              }
+            });
         } else {
           requestLabelsAndSaveContentRecognition(contentRecognition,
             (err, dbContentRecognition) => {
@@ -129,19 +107,20 @@ router.get("/:videoId", function (req, res) {
 });
 
 router.delete("/:videoId", function (req, res) {
-  db.Video.findByIdAndRemove(req.params.videoId).then(
+  videosController.deleteVideo(req.params.videoId).then(
     dbVideo => {
-      db.VideoContentRecognition.findByIdAndRemove(dbVideo.contentRecognition).then(
+      videosController.deleteContentRecognition(dbVideo.contentRecognition).then(
         dbContentRecognition => {
-          db.VideoContentRecognitionLabel.deleteMany({
-            _id: { $in: dbContentRecognition.labels }
-          }, function (err) {
-            if (err) throw err;
-            db.User.findByIdAndUpdate(req.user._id, {
-              $pull: { videos: dbVideo._id }
-            }, { new: true }).populate("videos").then(
-              dbUser => res.json(dbUser.videos));
-          });
+          videosController.deleteContentRecognitionLabels(dbContentRecognition.labels,
+            err => {
+              if (err) throw err;
+              videosController.removeUserVideo(req.user._id, dbVideo._id).then(
+                dbUser => {
+                  res.json(dbUser.videos)
+                }
+              )
+            }
+          )
         }
       )
     }
@@ -152,24 +131,20 @@ router.delete("/:videoId", function (req, res) {
 });
 
 router.post("/:videoId", function (req, res) {
-  db.Comment.create({
+  videosController.createComment({
     user: req.user._id,
     text: req.body.text.trim()
-  }).then(dbComment => {
-    console.log(dbComment);
-    return db.Video.findByIdAndUpdate(req.params.videoId, {
-      $push: { comments: dbComment._id }
-    }, { new: true }).populate("comments");
-  }).then(dbVideo => {
-    db.User.populate(dbVideo, { path: "comments.user", select: "username" },
-      (err, video) => {
-        if (err) throw err;
-        res.json(video);
-      });
+  }).then(function (dbComment) {
+    return videosController.addVideoComment(req.params.videoId, dbComment._id);
+  }).then(function (dbVideo) {
+    videosController.populateUserComments(dbVideo, (err, video) => {
+      if (err) throw err;
+      res.json(video);
+    });
   }).catch(err => {
     console.log(err);
     res.status(500).end();
-  })
+  });
 });
 
 module.exports = router;
