@@ -33,8 +33,8 @@ const VideoContentRecognitionSchema = new Schema({
 VideoContentRecognitionSchema.methods.hasExplicitLabels = function () {
   const topLevelLabels = {};
   const topLevelCategories = [
-    "Explicit Nudity",
-    "Suggestive"
+    "Suggestive",
+    "Explicit Nudity"
   ];
   topLevelCategories.forEach(category => {
     topLevelLabels[category] = {
