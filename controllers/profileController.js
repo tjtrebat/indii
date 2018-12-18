@@ -8,6 +8,12 @@ const { amazon } = require("../keys");
 
 aws.config.region = "us-east-1";
 
+const s3 = new aws.S3();
+
+const rekognition = new aws.Rekognition({
+  apiVersion: "2016-06-27"
+});
+
 function updateVideo(video) {
   const { user, title, description, fileName, s3Bucket } = video;
   return db.Video.findOneAndUpdate({ fileName }, {
@@ -23,25 +29,9 @@ function createContentRecognition(contentRecognition) {
   return db.VideoContentRecognition.create(contentRecognition);
 }
 
-function updateContentRecognition(dbVideo, contentRecognition, fn) {
-  if (dbVideo.contentRecognition) {
-    db.VideoContentRecognition.findByIdAndUpdate(
-      dbVideo.contentRecognition._id,
-      contentRecognition,
-      (err, dbContentRecognition) => {
-        if (err) return fn(err);
-        fn(null, dbContentRecognition);
-      });
-  } else {
-    createContentRecognition(contentRecognition).then(
-      dbContentRecognition => {
-        dbVideo.contentRecognition = dbContentRecognition._id;
-        dbVideo.save(function (err) {
-          if (err) return fn(err);
-          fn(null, dbContentRecognition);
-        });
-      });
-  }
+function updateContentRecognition(contentRecognition) {
+  return db.VideoContentRecognition.findByIdAndUpdate(
+    contentRecognition._id, contentRecognition);
 }
 
 function addUserVideo(userId, videoId) {
@@ -80,8 +70,6 @@ async function deleteVideo(userId, videoId) {
   return dbUser.videos;
 }
 
-const s3 = new aws.S3();
-
 function putObjectInS3StorageBucket(videoFile, fn) {
   s3.putObject({
     ACL: "public-read",
@@ -117,24 +105,21 @@ function getFormError(data) {
   }
 }
 
-const rekognition = new aws.Rekognition({ apiVersion: "2016-06-27" });
-
 function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
-  const { jobTag, clientRequestToken } = contentRecognition;
   const params = {
-    JobTag: jobTag,
     MinConfidence: 50.0,
+    JobTag: contentRecognition.jobTag,
     Video: {
       S3Object: {
         Bucket: dbVideo.s3Bucket,
         Name: dbVideo.fileName
       }
     },
-    ClientRequestToken: clientRequestToken,
     NotificationChannel: {
       RoleArn: amazon.rekognitionRoleArn,
       SNSTopicArn: amazon.rekognitionTopicArn
-    }
+    },
+    ClientRequestToken: contentRecognition.clientRequestToken
   }
   rekognition.startContentModeration(params,
     function (err, data) {
@@ -147,23 +132,29 @@ function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
     });
 }
 
-function sendRequestAndUpdateContentRecognition(dbVideo, fn) {
+function sendRequestAndUpdateContentRecognition(video, fn) {
   const contentRecognition = {
     labels: [],
-    jobTag: dbVideo._id.toString(),
     receivedLabelsAt: null,
-    clientRequestToken: uuidv1()
+    clientRequestToken: uuidv1(),
+    jobTag: video._id.toString()
   };
-  sendContentModerationRequest(dbVideo, contentRecognition,
+  sendContentModerationRequest(video, contentRecognition,
     (err, data) => {
       if (err) return fn(err);
       contentRecognition.jobId = data.JobId;
-      updateContentRecognition(
-        dbVideo, contentRecognition,
-        (error, dbContentRecognition) => {
-          if (error) return fn(error);
-          fn(null, dbContentRecognition);
-        });
+      if (video.contentRecognition) {
+        contentRecognition._id = video.contentRecognition._id;
+        updateContentRecognition(contentRecognition).then(
+          dbContentRecognition => fn(null, dbContentRecognition)
+        ).catch(error => fn(error));
+      } else {
+        createContentRecognition(contentRecognition).then(
+          dbContentRecognition => {
+            video.contentRecognition = dbContentRecognition._id;
+            return video.save();
+          }).then(dbVideo => fn(null, dbVideo.contentRecognition)).catch(error => fn(error));
+      }
     });
 }
 
