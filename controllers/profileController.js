@@ -105,16 +105,16 @@ function getFormError(data) {
   }
 }
 
-function sendContentModerationRequest(dbVideo, contentRecognition, fn) {
+function sendContentModerationRequest(video, contentRecognition, fn) {
   const params = {
-    MinConfidence: 50.0,
-    JobTag: contentRecognition.jobTag,
     Video: {
       S3Object: {
-        Bucket: dbVideo.s3Bucket,
-        Name: dbVideo.fileName
+        Name: video.fileName,
+        Bucket: video.s3Bucket
       }
     },
+    MinConfidence: 50.0,
+    JobTag: contentRecognition.jobTag,
     NotificationChannel: {
       RoleArn: amazon.rekognitionRoleArn,
       SNSTopicArn: amazon.rekognitionTopicArn
@@ -147,13 +147,16 @@ function sendRequestAndUpdateContentRecognition(video, fn) {
         contentRecognition._id = video.contentRecognition._id;
         updateContentRecognition(contentRecognition).then(
           dbContentRecognition => fn(null, dbContentRecognition)
-        ).catch(error => fn(error));
+        );
       } else {
         createContentRecognition(contentRecognition).then(
           dbContentRecognition => {
             video.contentRecognition = dbContentRecognition._id;
-            return video.save();
-          }).then(dbVideo => fn(null, dbVideo.contentRecognition)).catch(error => fn(error));
+            video.save(function (error) {
+              if (error) return fn(error);
+              fn(null, dbContentRecognition);
+            })
+          });
       }
     });
 }
